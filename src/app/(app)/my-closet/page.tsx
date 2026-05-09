@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { Plus, Pencil, Trash2, X, Check } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { ClothingItem } from '@/types';
+import CameraCapture from '@/components/CameraCapture';
 import clsx from 'clsx';
 
 const CATEGORIES: ClothingItem['category'][] = ['tops', 'bottoms', 'dresses', 'outerwear', 'shoes', 'accessories'];
@@ -18,7 +19,7 @@ function blankDraft(): Partial<ClothingItem> {
 }
 
 export default function MyClosetPage() {
-  const { myItems, addItem, updateItem, deleteItem } = useApp();
+  const { myItems, addItem, updateItem, deleteItem, currentUser } = useApp();
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState<Partial<ClothingItem>>(blankDraft());
   const [editId, setEditId] = useState<string | null>(null);
@@ -91,7 +92,11 @@ export default function MyClosetPage() {
               </select>
               <input className="input-field w-24" placeholder="Size *" value={draft.size || ''} onChange={e => setDraft(d => ({ ...d, size: e.target.value }))} />
             </div>
-            <input className="input-field" placeholder="Image URL (optional)" value={draft.image_url || ''} onChange={e => setDraft(d => ({ ...d, image_url: e.target.value }))} />
+            <CameraCapture
+              userId={currentUser!.id}
+              existingUrl={draft.image_url}
+              onCapture={url => setDraft(d => ({ ...d, image_url: url }))}
+            />
             <button className="btn-primary" onClick={saveItem} disabled={!draft.name || !draft.size || saving}>
               <Check size={16} className="inline mr-1" />{saving ? 'Saving…' : editId ? 'Save changes' : 'Add to closet'}
             </button>
