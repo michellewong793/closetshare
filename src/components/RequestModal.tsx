@@ -72,7 +72,7 @@ export default function RequestModal({ item, owner, onClose }: Props) {
                 <p className="text-sm text-gray-500 mt-0.5">Size {item.size}</p>
                 <p className="text-sm text-gray-600 mt-1 line-clamp-2">{item.description}</p>
                 <div className="flex items-center gap-1.5 mt-2">
-                  <div className={clsx('w-5 h-5 rounded-full text-white text-[10px] font-bold flex items-center justify-center', owner.profile.avatar_color)}>
+                  <div className={clsx('w-5 h-5 rounded-full text-gray-900 text-[10px] font-bold flex items-center justify-center', owner.profile.avatar_color)}>
                     {owner.profile.full_name.charAt(0)}
                   </div>
                   <span className="text-xs text-gray-500">{owner.profile.full_name}'s closet</span>

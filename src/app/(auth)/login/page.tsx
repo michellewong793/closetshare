@@ -35,8 +35,8 @@ export default function LoginPage() {
   return (
     <div className="flex flex-col min-h-screen px-6 pt-16 pb-8">
       <div className="flex flex-col items-center mb-10">
-        <div className="w-14 h-14 bg-brand-600 rounded-2xl flex items-center justify-center mb-3 shadow-lg">
-          <Shirt className="text-white" size={28} />
+        <div className="w-14 h-14 bg-brand-400 rounded-2xl flex items-center justify-center mb-3 shadow-lg">
+          <Shirt className="text-gray-900" size={28} />
         </div>
         <h1 className="text-2xl font-bold text-gray-900">ClosetShare</h1>
         <p className="text-gray-500 text-sm mt-1">Borrow from your besties</p>
@@ -79,11 +79,11 @@ export default function LoginPage() {
         </div>
 
         {error && (
-          <p className="text-red-500 text-sm text-center">{error}</p>
+          <p className="text-orange-600 text-sm text-center">{error}</p>
         )}
 
         <div className="flex justify-end">
-          <Link href="/change-password" className="text-sm text-brand-600 hover:text-brand-700 font-medium">
+          <Link href="/change-password" className="text-sm text-brand-700 hover:text-brand-800 font-medium">
             Forgot password?
           </Link>
         </div>
@@ -94,7 +94,7 @@ export default function LoginPage() {
 
         <p className="text-center text-sm text-gray-500 mt-2">
           No account?{' '}
-          <Link href="/signup" className="text-brand-600 font-semibold hover:underline">
+          <Link href="/signup" className="text-brand-700 font-semibold hover:underline">
             Sign up
           </Link>
         </p>

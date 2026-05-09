@@ -11,7 +11,7 @@ create table public.profiles (
   username      text unique not null,
   full_name     text not null,
   phone_number  text,
-  avatar_color  text default 'bg-brand-400',
+  avatar_color  text default 'bg-brand-300',
   created_at    timestamptz default now()
 );
 

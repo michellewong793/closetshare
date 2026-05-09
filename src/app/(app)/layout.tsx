@@ -26,7 +26,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="w-8 h-8 border-4 border-brand-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-brand-400 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -37,13 +37,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col min-h-screen">
       <header className="sticky top-0 z-30 bg-cream/80 backdrop-blur-md border-b border-gray-100 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 bg-brand-600 rounded-lg flex items-center justify-center">
-            <Shirt className="text-white" size={14} />
+          <div className="w-7 h-7 bg-brand-400 rounded-lg flex items-center justify-center">
+            <Shirt className="text-gray-900" size={14} />
           </div>
           <span className="font-bold text-gray-900">ClosetShare</span>
         </div>
         <Link href="/profile" className="flex items-center gap-2">
-          <div className={clsx('w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold', currentUser.profile.avatar_color)}>
+          <div className={clsx('w-8 h-8 rounded-full flex items-center justify-center text-gray-900 text-sm font-bold', currentUser.profile.avatar_color)}>
             {currentUser.profile.full_name.charAt(0)}
           </div>
         </Link>

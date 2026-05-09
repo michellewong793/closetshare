@@ -66,14 +66,14 @@ export default function SignupPage() {
   if (checkEmail) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen px-6 text-center">
-        <div className="w-14 h-14 bg-brand-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
-          <Shirt className="text-white" size={28} />
+        <div className="w-14 h-14 bg-brand-400 rounded-2xl flex items-center justify-center mb-4 shadow-lg">
+          <Shirt className="text-gray-900" size={28} />
         </div>
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Check your email</h2>
         <p className="text-gray-500 mb-2">We sent a confirmation link to</p>
         <p className="font-semibold text-gray-900 mb-6">{email}</p>
         <p className="text-sm text-gray-400">Click the link to activate your account, then sign in.</p>
-        <Link href="/login" className="mt-8 btn-primary max-w-xs mx-auto">Go to sign in</Link>
+        <Link href="/login" className="mt-8 btn-primary max-w-xs mx-auto block">Go to sign in</Link>
       </div>
     );
   }
@@ -81,8 +81,8 @@ export default function SignupPage() {
   return (
     <div className="flex flex-col min-h-screen px-6 pt-12 pb-8">
       <div className="flex flex-col items-center mb-8">
-        <div className="w-14 h-14 bg-brand-600 rounded-2xl flex items-center justify-center mb-3 shadow-lg">
-          <Shirt className="text-white" size={28} />
+        <div className="w-14 h-14 bg-brand-400 rounded-2xl flex items-center justify-center mb-3 shadow-lg">
+          <Shirt className="text-gray-900" size={28} />
         </div>
         <h1 className="text-2xl font-bold text-gray-900">Create account</h1>
         <p className="text-gray-500 text-sm mt-1">Join your friends' closets</p>
@@ -149,7 +149,7 @@ export default function SignupPage() {
           </div>
         </div>
 
-        {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+        {error && <p className="text-orange-600 text-sm text-center">{error}</p>}
 
         <button type="submit" className="btn-primary mt-2" disabled={loading}>
           {loading ? 'Creating account…' : 'Create account'}
@@ -157,7 +157,7 @@ export default function SignupPage() {
 
         <p className="text-center text-sm text-gray-500">
           Already have an account?{' '}
-          <Link href="/login" className="text-brand-600 font-semibold hover:underline">
+          <Link href="/login" className="text-brand-700 font-semibold hover:underline">
             Sign in
           </Link>
         </p>

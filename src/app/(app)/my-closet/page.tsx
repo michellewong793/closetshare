@@ -70,7 +70,7 @@ export default function MyClosetPage() {
         </div>
         <button
           onClick={() => { setAdding(true); setEditId(null); setDraft(blankDraft()); }}
-          className="flex items-center gap-1.5 bg-brand-600 text-white text-sm font-semibold px-4 py-2.5 rounded-2xl"
+          className="flex items-center gap-1.5 bg-brand-400 text-gray-900 text-sm font-semibold px-4 py-2.5 rounded-2xl"
         >
           <Plus size={16} /> Add item
         </button>
@@ -123,7 +123,7 @@ export default function MyClosetPage() {
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     <button onClick={() => startEdit(item)} className="p-1.5 text-gray-400 hover:text-gray-600"><Pencil size={15} /></button>
-                    <button onClick={() => handleDelete(item.id)} className="p-1.5 text-gray-400 hover:text-red-500"><Trash2 size={15} /></button>
+                    <button onClick={() => handleDelete(item.id)} className="p-1.5 text-gray-400 hover:text-orange-500"><Trash2 size={15} /></button>
                   </div>
                 </div>
                 {item.description && <p className="text-xs text-gray-500 mt-1 line-clamp-1">{item.description}</p>}

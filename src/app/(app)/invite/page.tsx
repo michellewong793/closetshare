@@ -55,7 +55,7 @@ export default function InvitePage() {
           <div className="flex flex-col gap-2">
             {incomingInvites.map(invite => (
               <div key={invite.id} className="card flex items-center gap-3 p-3">
-                <div className={clsx('w-10 h-10 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0', invite.profile?.avatar_color ?? 'bg-gray-400')}>
+                <div className={clsx('w-10 h-10 rounded-full flex items-center justify-center text-gray-900 font-bold flex-shrink-0', invite.profile?.avatar_color ?? 'bg-gray-200')}>
                   {invite.profile?.full_name?.charAt(0) ?? '?'}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -64,7 +64,7 @@ export default function InvitePage() {
                 </div>
                 <button
                   onClick={() => acceptInvite(invite.id)}
-                  className="flex-shrink-0 px-3 py-1.5 bg-brand-600 text-white text-xs font-semibold rounded-xl"
+                  className="flex-shrink-0 px-3 py-1.5 bg-brand-400 text-gray-900 text-xs font-semibold rounded-xl"
                 >
                   Accept
                 </button>
@@ -77,7 +77,7 @@ export default function InvitePage() {
       {/* Invite by username */}
       <div className="card p-4 mb-5">
         <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-          <UserPlus size={16} className="text-brand-600" /> Add friend by username
+          <UserPlus size={16} className="text-brand-700" /> Add friend by username
         </h3>
         <form onSubmit={handleInvite} className="flex flex-col gap-3">
           <input
@@ -88,7 +88,7 @@ export default function InvitePage() {
             onChange={e => { setUsername(e.target.value); setInviteError(''); }}
             required
           />
-          {inviteError && <p className="text-red-500 text-sm">{inviteError}</p>}
+          {inviteError && <p className="text-orange-600 text-sm">{inviteError}</p>}
           <button type="submit" className="btn-primary" disabled={loading}>
             <UserPlus size={16} className="inline mr-1.5" />
             {loading ? 'Sending…' : 'Send invite'}
@@ -104,7 +104,7 @@ export default function InvitePage() {
       {/* Share link */}
       <div className="card p-4 mb-6">
         <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-          <Copy size={16} className="text-brand-600" /> Share invite link
+          <Copy size={16} className="text-brand-700" /> Share invite link
         </h3>
         <div className="flex gap-2">
           <div className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-500 truncate">
@@ -114,7 +114,7 @@ export default function InvitePage() {
             onClick={copyLink}
             className={clsx(
               'flex-shrink-0 px-4 py-2 rounded-xl text-sm font-semibold transition-all',
-              copied ? 'bg-green-600 text-white' : 'bg-brand-600 text-white hover:bg-brand-700'
+              copied ? 'bg-green-600 text-white' : 'bg-brand-400 text-gray-900 hover:bg-brand-500'
             )}
           >
             {copied ? 'Copied!' : 'Copy'}
@@ -130,7 +130,7 @@ export default function InvitePage() {
             {pendingInvites.filter(i => i.owner_id === currentUser?.id).map(invite => (
               <div key={invite.id} className="flex items-center justify-between card px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <div className={clsx('w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold', invite.profile?.avatar_color ?? 'bg-gray-400')}>
+                  <div className={clsx('w-8 h-8 rounded-full flex items-center justify-center text-gray-900 text-sm font-bold', invite.profile?.avatar_color ?? 'bg-gray-200')}>
                     {invite.profile?.full_name?.charAt(0) ?? '?'}
                   </div>
                   <span className="text-sm text-gray-700">@{invite.profile?.username}</span>
@@ -154,7 +154,7 @@ export default function InvitePage() {
           <div className="flex flex-col gap-3">
             {friends.map(f => (
               <div key={f.id} className="card flex items-center gap-3 p-3">
-                <div className={clsx('w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-lg flex-shrink-0', f.profile.avatar_color)}>
+                <div className={clsx('w-11 h-11 rounded-full flex items-center justify-center text-gray-900 font-bold text-lg flex-shrink-0', f.profile.avatar_color)}>
                   {f.profile.full_name.charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">

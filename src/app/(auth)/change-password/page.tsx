@@ -136,7 +136,7 @@ export default function ChangePasswordPage() {
               required
             />
           </div>
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {error && <p className="text-orange-600 text-sm">{error}</p>}
           <button type="submit" className="btn-primary mt-2" disabled={loading}>
             {loading ? 'Updating…' : 'Update password'}
           </button>

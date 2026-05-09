@@ -11,7 +11,7 @@ type Tab = 'incoming' | 'outgoing';
 const STATUS_CONFIG = {
   pending:  { label: 'Pending',  color: 'bg-amber-100 text-amber-700', icon: Clock },
   approved: { label: 'Approved', color: 'bg-green-100 text-green-700', icon: CheckCircle2 },
-  declined: { label: 'Declined', color: 'bg-red-100 text-red-700',   icon: XCircle },
+  declined: { label: 'Declined', color: 'bg-orange-100 text-orange-700', icon: XCircle },
   returned: { label: 'Returned', color: 'bg-gray-100 text-gray-600',  icon: RotateCcw },
 };
 
@@ -30,7 +30,7 @@ function RequestCard({ req, isIncoming, onApprove, onDecline, onReturn }: {
   return (
     <div className="card p-4">
       <div className="flex items-start gap-3">
-        <div className={clsx('w-10 h-10 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0', avatarColor)}>
+        <div className={clsx('w-10 h-10 rounded-full flex items-center justify-center text-gray-900 font-bold flex-shrink-0', avatarColor)}>
           {person?.full_name?.charAt(0) ?? '?'}
         </div>
         <div className="flex-1 min-w-0">
@@ -119,7 +119,7 @@ export default function RequestsPage() {
           >
             {t.charAt(0).toUpperCase() + t.slice(1)}
             {t === 'incoming' && incoming.filter(r => r.status === 'pending').length > 0 && (
-              <span className="ml-1.5 bg-brand-600 text-white text-xs rounded-full w-5 h-5 inline-flex items-center justify-center">
+              <span className="ml-1.5 bg-brand-400 text-gray-900 text-xs rounded-full w-5 h-5 inline-flex items-center justify-center">
                 {incoming.filter(r => r.status === 'pending').length}
               </span>
             )}

@@ -36,7 +36,7 @@ export default function ProfilePage() {
       <h2 className="text-2xl font-bold text-gray-900 mb-6">Profile</h2>
 
       <div className="flex flex-col items-center mb-8">
-        <div className={clsx('w-20 h-20 rounded-full flex items-center justify-center text-white text-3xl font-bold mb-3', currentUser.profile.avatar_color)}>
+        <div className={clsx('w-20 h-20 rounded-full flex items-center justify-center text-gray-900 text-3xl font-bold mb-3', currentUser.profile.avatar_color)}>
           {currentUser.profile.full_name.charAt(0)}
         </div>
         <p className="font-semibold text-gray-900">{currentUser.profile.full_name}</p>
@@ -64,7 +64,7 @@ export default function ProfilePage() {
       <div className="mt-6 pt-6 border-t border-gray-100">
         <button
           onClick={handleLogout}
-          className="flex items-center gap-2 text-red-500 hover:text-red-600 font-medium text-sm"
+          className="flex items-center gap-2 text-orange-600 hover:text-orange-700 font-medium text-sm"
         >
           <LogOut size={16} /> Sign out
         </button>

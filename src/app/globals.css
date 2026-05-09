@@ -10,25 +10,25 @@
 
 @layer components {
   .btn-primary {
-    @apply bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white font-semibold py-3 px-6 rounded-2xl transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed w-full text-center;
+    @apply bg-brand-400 hover:bg-brand-500 active:bg-brand-500 text-gray-900 font-semibold py-3 px-6 rounded-2xl transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed w-full text-center;
   }
   .btn-secondary {
     @apply bg-white hover:bg-gray-50 active:bg-gray-100 text-gray-800 font-semibold py-3 px-6 rounded-2xl border border-gray-200 transition-all duration-150 w-full text-center;
   }
   .btn-ghost {
-    @apply text-brand-600 hover:text-brand-700 font-medium transition-colors duration-150;
+    @apply text-brand-700 hover:text-brand-800 font-medium transition-colors duration-150;
   }
   .input-field {
-    @apply w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-transparent transition-all duration-150;
+    @apply w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-transparent transition-all duration-150;
   }
   .card {
     @apply bg-white rounded-3xl shadow-sm border border-gray-100;
   }
   .nav-item {
-    @apply flex flex-col items-center gap-1 text-xs font-medium text-gray-400 hover:text-brand-600 transition-colors;
+    @apply flex flex-col items-center gap-1 text-xs font-medium text-gray-400 hover:text-brand-700 transition-colors;
   }
   .nav-item.active {
-    @apply text-brand-600;
+    @apply text-brand-700;
   }
   .tag {
     @apply text-xs font-medium px-2.5 py-1 rounded-full;

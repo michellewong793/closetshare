@@ -52,7 +52,7 @@ export default function DashboardPage() {
             className={clsx(
               'flex-shrink-0 text-sm font-medium px-4 py-2 rounded-full border transition-all',
               activeCategory === cat
-                ? 'bg-brand-600 text-white border-brand-600'
+                ? 'bg-brand-400 text-gray-900 border-brand-400'
                 : 'bg-white text-gray-600 border-gray-200 hover:border-brand-300'
             )}
           >
@@ -65,7 +65,7 @@ export default function DashboardPage() {
         <div className="flex gap-3 overflow-x-auto pb-2 mb-5 -mx-4 px-4">
           {friends.map(f => (
             <div key={f.id} className="flex-shrink-0 flex flex-col items-center gap-1">
-              <div className={clsx('w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg', f.profile.avatar_color)}>
+              <div className={clsx('w-12 h-12 rounded-full flex items-center justify-center text-gray-900 font-bold text-lg', f.profile.avatar_color)}>
                 {f.profile.full_name.charAt(0)}
               </div>
               <span className="text-xs text-gray-500 max-w-[50px] truncate">{f.profile.full_name.split(' ')[0]}</span>
@@ -108,7 +108,7 @@ export default function DashboardPage() {
               <div className="p-3">
                 <p className="font-semibold text-sm text-gray-900 truncate">{item.name}</p>
                 <div className="flex items-center gap-1.5 mt-1">
-                  <div className={clsx('w-4 h-4 rounded-full text-white text-[9px] font-bold flex items-center justify-center', owner.profile.avatar_color)}>
+                  <div className={clsx('w-4 h-4 rounded-full text-gray-900 text-[9px] font-bold flex items-center justify-center', owner.profile.avatar_color)}>
                     {owner.profile.full_name.charAt(0)}
                   </div>
                   <span className="text-xs text-gray-500">{owner.profile.full_name.split(' ')[0]}</span>
