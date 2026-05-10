@@ -50,10 +50,11 @@ export default function SignupPage() {
 
     // Update phone number on the auto-created profile
     if (data.user && phone) {
-      await supabase
+      const { error: phoneError } = await supabase
         .from('profiles')
         .update({ phone_number: phone })
         .eq('id', data.user.id);
+      if (phoneError) console.error('[signup] phone save failed:', phoneError.message, phoneError.code);
     }
 
     // Auto-connect to inviter if signup came from a personal invite link

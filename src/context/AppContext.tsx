@@ -23,7 +23,7 @@ interface AppContextType {
   sendInvite: (username: string) => Promise<{ error: string | null }>;
   acceptInvite: (inviteId: string) => Promise<void>;
 
-  updateProfile: (updates: { full_name?: string; phone_number?: string }) => Promise<void>;
+  updateProfile: (updates: { full_name?: string; phone_number?: string }) => Promise<string | null>;
   signOut: () => Promise<void>;
 }
 
@@ -257,17 +257,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ─── Profile mutations ─────────────────────────────────────────────────────
 
-  async function updateProfile(updates: { full_name?: string; phone_number?: string }) {
-    if (!currentUser) return;
-    const { data } = await supabase
+  async function updateProfile(updates: { full_name?: string; phone_number?: string }): Promise<string | null> {
+    if (!currentUser) return 'Not logged in';
+    const { data, error } = await supabase
       .from('profiles')
       .update(updates)
       .eq('id', currentUser.id)
       .select()
       .single();
+    if (error) {
+      console.error('[updateProfile] failed:', error.message, error.code, error.details);
+      return error.message;
+    }
     if (data) {
       setCurrentUser(prev => prev ? { ...prev, profile: data as Profile } : prev);
     }
+    return null;
   }
 
   async function signOut() {

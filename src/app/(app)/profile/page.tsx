@@ -13,15 +13,21 @@ export default function ProfilePage() {
   const [phone, setPhone] = useState(currentUser?.profile.phone_number ?? '');
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     if (!currentUser) return;
     setSaving(true);
-    await updateProfile({ full_name: fullName, phone_number: phone });
+    setSaveError('');
+    const err = await updateProfile({ full_name: fullName, phone_number: phone });
     setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    if (err) {
+      setSaveError(err);
+    } else {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    }
   }
 
   async function handleLogout() {
@@ -55,6 +61,7 @@ export default function ProfilePage() {
           </label>
           <input type="tel" className="input-field" placeholder="+1 (555) 000-0000" value={phone} onChange={e => setPhone(e.target.value)} />
         </div>
+        {saveError && <p className="text-orange-600 text-sm">{saveError}</p>}
         <button type="submit" className="btn-primary" disabled={saving}>
           <Save size={16} className="inline mr-1.5" />
           {saved ? 'Saved!' : saving ? 'Saving…' : 'Save changes'}
