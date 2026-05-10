@@ -1,18 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Shirt } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { useApp } from '@/context/AppContext';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { currentUser } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Navigate once the context confirms the session is fully loaded
+  useEffect(() => {
+    if (currentUser) router.replace('/dashboard');
+  }, [currentUser, router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -27,9 +34,7 @@ export default function LoginPage() {
       setLoading(false);
       return;
     }
-
-    router.push('/dashboard');
-    router.refresh();
+    // Session established — useEffect above navigates once currentUser is set
   }
 
   return (
