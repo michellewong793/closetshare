@@ -147,6 +147,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      setLoading(true);
       if (session?.user) {
         const { data: profile } = await supabase
           .from('profiles')
