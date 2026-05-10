@@ -54,6 +54,7 @@ export interface FriendWithItems {
   email?: string;
   profile: Profile;
   items: ClothingItem[];
+  connectedAt: string; // closet_members.created_at
 }
 
 /** @deprecated use AppUser */

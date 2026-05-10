@@ -108,6 +108,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           id: friendId,
           profile: profile as Profile,
           items: (items as ClothingItem[]) ?? [],
+          connectedAt: m.created_at,
         };
       })
     );

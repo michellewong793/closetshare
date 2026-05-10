@@ -5,6 +5,12 @@ import { UserPlus, CheckCircle2, Copy, Users } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import clsx from 'clsx';
 
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+function isNew(connectedAt: string) {
+  return Date.now() - new Date(connectedAt).getTime() < SEVEN_DAYS_MS;
+}
+
 export default function InvitePage() {
   const { friends, pendingInvites, sendInvite, acceptInvite, currentUser } = useApp();
   const [username, setUsername] = useState('');
@@ -14,7 +20,7 @@ export default function InvitePage() {
   const [loading, setLoading] = useState(false);
 
   const inviteLink = typeof window !== 'undefined'
-    ? `${window.location.origin}/signup`
+    ? `${window.location.origin}/signup?inviter=${currentUser?.profile.username ?? ''}`
     : 'https://closetshare.app/signup';
 
   async function handleInvite(e: React.FormEvent) {
@@ -158,7 +164,12 @@ export default function InvitePage() {
                   {f.profile.full_name.charAt(0)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900">{f.profile.full_name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-gray-900">{f.profile.full_name}</p>
+                    {isNew(f.connectedAt) && (
+                      <span className="tag bg-brand-300 text-gray-900 text-[10px] font-bold">✨ New</span>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-500">@{f.profile.username} · {f.items.length} items</p>
                 </div>
                 <span className="tag bg-green-100 text-green-700 flex-shrink-0">✓ Joined</span>

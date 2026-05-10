@@ -17,6 +17,10 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [checkEmail, setCheckEmail] = useState(false);
 
+  const inviterUsername = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('inviter')
+    : null;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
@@ -52,12 +56,40 @@ export default function SignupPage() {
         .eq('id', data.user.id);
     }
 
+    // Auto-connect to inviter if signup came from a personal invite link
+    if (data.user && data.session && inviterUsername) {
+      const { data: inviterProfile } = await supabase
+        .from('profiles')
+        .select('id, phone_number, full_name')
+        .eq('username', inviterUsername)
+        .single();
+
+      if (inviterProfile && inviterProfile.id !== data.user.id) {
+        // Create accepted connection — new user as owner, inviter as member
+        await supabase.from('closet_members').insert({
+          owner_id: data.user.id,
+          member_id: inviterProfile.id,
+          status: 'accepted',
+        });
+
+        // SMS the inviter
+        if (inviterProfile.phone_number) {
+          await fetch('/api/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: inviterProfile.phone_number,
+              message: `👗 ClosetShare: ${fullName.split(' ')[0]} just signed up and joined your closet!`,
+            }),
+          }).catch(() => {});
+        }
+      }
+    }
+
     if (data.session) {
-      // Email confirmation disabled — logged in immediately
       router.push('/dashboard');
       router.refresh();
     } else {
-      // Email confirmation required
       setCheckEmail(true);
       setLoading(false);
     }
