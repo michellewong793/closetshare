@@ -33,79 +33,85 @@ export default function SignupPage() {
     setLoading(true);
     const supabase = createClient();
 
-    const { data, error: authError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName },
-        emailRedirectTo: `${location.origin}/auth/callback`,
-      },
-    });
+    try {
+      const { data, error: authError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName },
+          emailRedirectTo: `${location.origin}/auth/callback`,
+        },
+      });
 
-    if (authError) {
-      setError(authError.message);
-      setLoading(false);
-      return;
-    }
-
-    // Update phone number on the auto-created profile
-    if (data.user && phone) {
-      const { error: phoneError } = await supabase
-        .from('profiles')
-        .update({ phone_number: phone })
-        .eq('id', data.user.id);
-      if (phoneError) console.error('[signup] phone save failed:', phoneError.message, phoneError.code);
-    }
-
-    // Auto-connect to inviter if signup came from a personal invite link
-    if (data.user && data.session && inviterUsername) {
-      const { data: inviterProfile, error: inviterError } = await supabase
-        .from('profiles')
-        .select('id, phone_number, full_name')
-        .eq('username', inviterUsername)
-        .single();
-
-      if (inviterError) {
-        console.error('[invite] inviter lookup failed:', inviterError.message);
+      if (authError) {
+        setError(authError.message);
+        setLoading(false);
+        return;
       }
 
-      if (inviterProfile && inviterProfile.id !== data.user.id) {
-        const { error: connectError } = await supabase.from('closet_members').insert({
-          owner_id: data.user.id,
-          member_id: inviterProfile.id,
-          status: 'accepted',
-        });
+      // Update phone number on the auto-created profile
+      if (data.user && phone) {
+        const { error: phoneError } = await supabase
+          .from('profiles')
+          .update({ phone_number: phone })
+          .eq('id', data.user.id);
+        if (phoneError) console.error('[signup] phone save failed:', phoneError.message, phoneError.code);
+      }
 
-        if (connectError) {
-          console.error('[invite] closet_members insert failed:', connectError.message);
+      // Auto-connect to inviter if signup came from a personal invite link
+      if (data.user && data.session && inviterUsername) {
+        const { data: inviterProfile, error: inviterError } = await supabase
+          .from('profiles')
+          .select('id, phone_number, full_name')
+          .eq('username', inviterUsername)
+          .single();
+
+        if (inviterError) {
+          console.error('[invite] inviter lookup failed:', inviterError.message);
         }
 
-        // SMS the inviter
-        if (inviterProfile.phone_number) {
-          const smsRes = await fetch('/api/notify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              to: inviterProfile.phone_number,
-              message: `👗 ClosetShare: ${fullName.split(' ')[0]} just signed up and joined your closet!`,
-            }),
-          }).catch(err => { console.error('[invite] SMS fetch failed:', err); return null; });
+        if (inviterProfile && inviterProfile.id !== data.user.id) {
+          const { error: connectError } = await supabase.from('closet_members').insert({
+            owner_id: data.user.id,
+            member_id: inviterProfile.id,
+            status: 'accepted',
+          });
 
-          if (smsRes && !smsRes.ok) {
-            const body = await smsRes.json().catch(() => ({}));
-            console.error('[invite] SMS API error:', smsRes.status, body);
+          if (connectError) {
+            console.error('[invite] closet_members insert failed:', connectError.message);
           }
-        } else {
-          console.warn('[invite] inviter has no phone number, skipping SMS');
+
+          // SMS the inviter — fire-and-forget, don't block navigation
+          if (inviterProfile.phone_number) {
+            fetch('/api/notify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                to: inviterProfile.phone_number,
+                message: `👗 ClosetShare: ${fullName.split(' ')[0]} just signed up and joined your closet!`,
+              }),
+            }).then(async res => {
+              if (!res.ok) {
+                const body = await res.json().catch(() => ({}));
+                console.error('[invite] SMS API error:', res.status, body);
+              }
+            }).catch(err => console.error('[invite] SMS fetch failed:', err));
+          } else {
+            console.warn('[invite] inviter has no phone number, skipping SMS');
+          }
         }
       }
-    }
 
-    if (data.session) {
-      router.push('/dashboard');
-      router.refresh();
-    } else {
-      setCheckEmail(true);
+      if (data.session) {
+        router.push('/dashboard');
+        router.refresh();
+      } else {
+        setCheckEmail(true);
+        setLoading(false);
+      }
+    } catch (err) {
+      console.error('[signup] unexpected error:', err);
+      setError('Something went wrong. Please try again.');
       setLoading(false);
     }
   }
