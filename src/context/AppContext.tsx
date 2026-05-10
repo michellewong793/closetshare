@@ -22,6 +22,7 @@ interface AppContextType {
   pendingInvites: ClosetMember[];
   sendInvite: (username: string) => Promise<{ error: string | null }>;
   acceptInvite: (inviteId: string) => Promise<void>;
+  refreshFriends: () => Promise<void>;
 
   updateProfile: (updates: { full_name?: string; phone_number?: string }) => Promise<string | null>;
   signOut: () => Promise<void>;
@@ -65,25 +66,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [supabase]);
 
   const loadFriendsAndInvites = useCallback(async (userId: string) => {
-    const { data: members } = await supabase
+    const { data: members, error } = await supabase
       .from('closet_members')
-      .select('*, profile:profiles!member_id(*)')
+      .select('*')
       .or(`owner_id.eq.${userId},member_id.eq.${userId}`);
 
+    if (error) {
+      console.error('[loadFriendsAndInvites] query failed:', error.message, error.code);
+      return;
+    }
     if (!members) return;
 
     const accepted = members.filter(m => m.status === 'accepted');
-    const pending = members.filter(
-      m => m.status === 'pending' && m.owner_id === userId
-    );
+    // All pending invites (both sent and received)
+    const pending = members.filter(m => m.status === 'pending');
 
-    // Build pending invites with profile of the invited person
+    // Build pending invites with the other person's profile
     const pendingWithProfiles: ClosetMember[] = await Promise.all(
       pending.map(async m => {
+        const otherId = m.owner_id === userId ? m.member_id : m.owner_id;
         const { data: profile } = await supabase
           .from('profiles')
           .select('*')
-          .eq('id', m.member_id)
+          .eq('id', otherId)
           .single();
         return { ...m, profile: profile as Profile };
       })
@@ -220,6 +225,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (currentUser) await loadRequests(currentUser.id);
   }
 
+  async function refreshFriends() {
+    if (currentUser) await loadFriendsAndInvites(currentUser.id);
+  }
+
   // ─── Friend / invite mutations ─────────────────────────────────────────────
 
   async function sendInvite(username: string): Promise<{ error: string | null }> {
@@ -284,7 +293,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       currentUser, loading,
       myItems, addItem, updateItem, deleteItem,
       requests, createRequest, updateRequestStatus, refreshRequests,
-      friends, pendingInvites, sendInvite, acceptInvite,
+      friends, pendingInvites, sendInvite, acceptInvite, refreshFriends,
       updateProfile, signOut,
     }}>
       {children}

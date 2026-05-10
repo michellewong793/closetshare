@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { UserPlus, CheckCircle2, Copy, Users } from 'lucide-react';
+import { UserPlus, CheckCircle2, Copy, Users, RefreshCw } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import clsx from 'clsx';
 
@@ -12,12 +12,13 @@ function isNew(connectedAt: string) {
 }
 
 export default function InvitePage() {
-  const { friends, pendingInvites, sendInvite, acceptInvite, currentUser } = useApp();
+  const { friends, pendingInvites, sendInvite, acceptInvite, refreshFriends, currentUser } = useApp();
   const [username, setUsername] = useState('');
   const [inviteError, setInviteError] = useState('');
   const [justInvited, setJustInvited] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const inviteLink = typeof window !== 'undefined'
     ? `${window.location.origin}/signup?inviter=${currentUser?.profile.username ?? ''}`
@@ -46,12 +47,30 @@ export default function InvitePage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  async function handleRefresh() {
+    setRefreshing(true);
+    await refreshFriends();
+    setRefreshing(false);
+  }
+
   // Incoming invites (I'm the member, status = pending)
   const incomingInvites = pendingInvites.filter(i => i.member_id === currentUser?.id);
+  // Outgoing invites I've sent
+  const outgoingInvites = pendingInvites.filter(i => i.owner_id === currentUser?.id);
 
   return (
     <div className="px-4 pt-4">
-      <h2 className="text-2xl font-bold text-gray-900 mb-1">Friends</h2>
+      <div className="flex items-center justify-between mb-1">
+        <h2 className="text-2xl font-bold text-gray-900">Friends</h2>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="p-2 text-gray-400 hover:text-brand-700 transition-colors"
+          title="Refresh friends"
+        >
+          <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
+        </button>
+      </div>
       <p className="text-gray-500 text-sm mb-6">Connect with friends to share closets</p>
 
       {/* Incoming invites to accept */}
@@ -129,11 +148,11 @@ export default function InvitePage() {
       </div>
 
       {/* Pending invites I've sent */}
-      {pendingInvites.filter(i => i.owner_id === currentUser?.id).length > 0 && (
+      {outgoingInvites.length > 0 && (
         <div className="mb-6">
           <h3 className="font-semibold text-gray-700 text-sm mb-2">Pending invites</h3>
           <div className="flex flex-col gap-2">
-            {pendingInvites.filter(i => i.owner_id === currentUser?.id).map(invite => (
+            {outgoingInvites.map(invite => (
               <div key={invite.id} className="flex items-center justify-between card px-4 py-3">
                 <div className="flex items-center gap-2">
                   <div className={clsx('w-8 h-8 rounded-full flex items-center justify-center text-gray-900 text-sm font-bold', invite.profile?.avatar_color ?? 'bg-gray-200')}>
