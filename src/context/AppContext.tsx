@@ -8,6 +8,8 @@ interface AppContextType {
   currentUser: AppUser | null;
   loading: boolean;
 
+  signIn: (email: string, password: string) => Promise<string | null>;
+
   myItems: ClothingItem[];
   addItem: (item: Omit<ClothingItem, 'id' | 'user_id' | 'created_at'>) => Promise<string | null>;
   updateItem: (id: string, updates: Partial<ClothingItem>) => Promise<void>;
@@ -128,48 +130,40 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     ]);
   }, [loadMyItems, loadRequests, loadFriendsAndInvites]);
 
-  // ─── Auth listener ─────────────────────────────────────────────────────────
+  // ─── Auth init ────────────────────────────────────────────────────────────
+
+  function applyUser(user: { id: string; email?: string; created_at: string; user_metadata?: Record<string, string> }) {
+    const meta = user.user_metadata ?? {};
+    setCurrentUser({
+      id: user.id,
+      email: user.email ?? '',
+      profile: {
+        id: user.id,
+        full_name: meta.full_name ?? '',
+        username: meta.username ?? '',
+        avatar_color: 'bg-yellow-300',
+        phone_number: meta.phone_number ?? '',
+        created_at: user.created_at,
+      },
+    });
+    supabase.from('profiles').select('*').eq('id', user.id).single()
+      .then(({ data: p }) => { if (p) setCurrentUser(prev => prev ? { ...prev, profile: p as Profile } : prev); });
+    loadAllData(user.id);
+  }
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        if (profile) {
-          setCurrentUser({ id: session.user.id, email: session.user.email!, profile: profile as Profile });
-          await loadAllData(session.user.id);
-        }
-      }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) applyUser(session.user);
       setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setLoading(true);
-      if (session?.user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        if (profile) {
-          setCurrentUser({ id: session.user.id, email: session.user.email!, profile: profile as Profile });
-          await loadAllData(session.user.id);
-        }
-      } else {
-        setCurrentUser(null);
-        setMyItems([]);
-        setRequests([]);
-        setFriends([]);
-        setPendingInvites([]);
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    }).catch(() => setLoading(false));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function signIn(email: string, password: string): Promise<string | null> {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return error.message;
+    if (data.user) applyUser(data.user);
+    return null;
+  }
 
   // ─── Item mutations ────────────────────────────────────────────────────────
 
@@ -292,6 +286,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   return (
     <AppContext.Provider value={{
       currentUser, loading,
+      signIn,
       myItems, addItem, updateItem, deleteItem,
       requests, createRequest, updateRequestStatus, refreshRequests,
       friends, pendingInvites, sendInvite, acceptInvite, refreshFriends,
