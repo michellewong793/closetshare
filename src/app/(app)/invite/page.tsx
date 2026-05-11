@@ -1,34 +1,57 @@
 'use client';
 
 import { useState } from 'react';
-import { UserPlus, CheckCircle2, Copy, Users, RefreshCw } from 'lucide-react';
+import { UserPlus, CheckCircle2, Copy, Users, RefreshCw, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import { Closet } from '@/types';
 import clsx from 'clsx';
 
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-
-function isNew(connectedAt: string) {
-  return Date.now() - new Date(connectedAt).getTime() < SEVEN_DAYS_MS;
-}
-
 export default function InvitePage() {
-  const { friends, pendingInvites, sendInvite, acceptInvite, declineInvite, refreshFriends, currentUser } = useApp();
+  const { closets, pendingInvites, createCloset, sendInvite, acceptInvite, declineInvite, refreshClosets, currentUser } = useApp();
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Create closet
+  const [newClosetName, setNewClosetName] = useState('');
+  const [creatingCloset, setCreatingCloset] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
+
+  // Invite by username
+  const [selectedClosetId, setSelectedClosetId] = useState<string>('');
   const [username, setUsername] = useState('');
   const [inviteError, setInviteError] = useState('');
   const [justInvited, setJustInvited] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const [inviting, setInviting] = useState(false);
 
-  const inviteLink = `https://closetshare-beta.vercel.app/signup?inviter=${currentUser?.profile.username ?? ''}`;
+  // Share link
+  const [copiedClosetId, setCopiedClosetId] = useState<string | null>(null);
+
+  // Expanded closet
+  const [expandedClosetId, setExpandedClosetId] = useState<string | null>(null);
+
+  const myClosets = closets.filter(c => c.owner_id === currentUser?.id);
+  const joinedClosets = closets.filter(c => c.owner_id !== currentUser?.id);
+
+  async function handleCreateCloset(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newClosetName.trim()) return;
+    setCreatingCloset(true);
+    const closet = await createCloset(newClosetName.trim());
+    setCreatingCloset(false);
+    if (closet) {
+      setNewClosetName('');
+      setShowCreateForm(false);
+      setSelectedClosetId(closet.id);
+    }
+  }
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
-    if (!username.trim()) return;
+    if (!username.trim() || !selectedClosetId) return;
     setInviteError('');
-    setLoading(true);
-
-    const { error } = await sendInvite(username.trim());
+    setInviting(true);
+    const { error } = await sendInvite(username.trim(), selectedClosetId);
+    setInviting(false);
     if (error) {
       setInviteError(error);
     } else {
@@ -36,54 +59,45 @@ export default function InvitePage() {
       setUsername('');
       setTimeout(() => setJustInvited(null), 3000);
     }
-    setLoading(false);
   }
 
-  function copyLink() {
-    navigator.clipboard.writeText(inviteLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  function copyInviteLink(closet: Closet) {
+    const link = `https://closetshare-beta.vercel.app/signup?closet_id=${closet.id}`;
+    navigator.clipboard.writeText(link);
+    setCopiedClosetId(closet.id);
+    setTimeout(() => setCopiedClosetId(null), 2000);
   }
 
   async function handleRefresh() {
     setRefreshing(true);
-    await refreshFriends();
+    await refreshClosets();
     setRefreshing(false);
   }
 
-  // Incoming invites (I'm the member, status = pending)
-  const incomingInvites = pendingInvites.filter(i => i.member_id === currentUser?.id);
-  // Outgoing invites I've sent
-  const outgoingInvites = pendingInvites.filter(i => i.owner_id === currentUser?.id);
-
   return (
-    <div className="px-4 pt-4">
+    <div className="px-4 pt-4 pb-6">
       <div className="flex items-center justify-between mb-1">
-        <h2 className="text-2xl font-bold text-gray-900">Friends</h2>
+        <h2 className="text-2xl font-bold text-gray-900">Closets</h2>
         <button
           onClick={handleRefresh}
           disabled={refreshing}
           className="p-2 text-gray-400 hover:text-brand-700 transition-colors"
-          title="Refresh friends"
         >
           <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
         </button>
       </div>
-      <p className="text-gray-500 text-sm mb-6">Connect with friends to share closets</p>
+      <p className="text-gray-500 text-sm mb-5">Create closets and invite friends to share</p>
 
-      {/* Incoming invites to accept */}
-      {incomingInvites.length > 0 && (
+      {/* ── Pending invites ─────────────────────────────────────── */}
+      {pendingInvites.length > 0 && (
         <div className="mb-5">
           <h3 className="font-semibold text-gray-700 text-sm mb-2">Invites to accept</h3>
           <div className="flex flex-col gap-2">
-            {incomingInvites.map(invite => (
+            {pendingInvites.map(invite => (
               <div key={invite.id} className="card flex items-center gap-3 p-3">
-                <div className={clsx('w-10 h-10 rounded-full flex items-center justify-center text-gray-900 font-bold flex-shrink-0', invite.profile?.avatar_color ?? 'bg-gray-200')}>
-                  {invite.profile?.full_name?.charAt(0) ?? '?'}
-                </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-gray-900">{invite.profile?.full_name}</p>
-                  <p className="text-xs text-gray-500">@{invite.profile?.username}</p>
+                  <p className="font-semibold text-gray-900 truncate">{invite.closet?.name ?? 'A closet'}</p>
+                  <p className="text-xs text-gray-500">Invited to join</p>
                 </div>
                 <div className="flex gap-2 flex-shrink-0">
                   <button
@@ -105,104 +119,175 @@ export default function InvitePage() {
         </div>
       )}
 
-      {/* Invite by username */}
-      <div className="card p-4 mb-5">
-        <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-          <UserPlus size={16} className="text-brand-700" /> Add friend by username
-        </h3>
-        <form onSubmit={handleInvite} className="flex flex-col gap-3">
-          <input
-            type="text"
-            className="input-field"
-            placeholder="their_username"
-            value={username}
-            onChange={e => { setUsername(e.target.value); setInviteError(''); }}
-            required
-          />
-          {inviteError && <p className="text-orange-600 text-sm">{inviteError}</p>}
-          <button type="submit" className="btn-primary" disabled={loading}>
-            <UserPlus size={16} className="inline mr-1.5" />
-            {loading ? 'Sending…' : 'Send invite'}
+      {/* ── My closets ──────────────────────────────────────────── */}
+      <div className="mb-5">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="font-semibold text-gray-700 text-sm">My closets ({myClosets.length})</h3>
+          <button
+            onClick={() => setShowCreateForm(v => !v)}
+            className="flex items-center gap-1 text-xs font-semibold text-brand-700 hover:text-brand-800"
+          >
+            <Plus size={14} /> New closet
           </button>
-        </form>
-        {justInvited && (
-          <div className="mt-3 flex items-center gap-2 text-green-700 text-sm font-medium bg-green-50 rounded-xl p-3">
-            <CheckCircle2 size={16} /> Invite sent to @{justInvited}!
+        </div>
+
+        {showCreateForm && (
+          <form onSubmit={handleCreateCloset} className="card p-3 mb-3 flex gap-2">
+            <input
+              className="input-field flex-1 text-sm py-2"
+              placeholder="Closet name (e.g. Spring fits)"
+              value={newClosetName}
+              onChange={e => setNewClosetName(e.target.value)}
+              required
+              autoFocus
+            />
+            <button type="submit" className="btn-primary py-2 px-4 text-sm" disabled={creatingCloset}>
+              {creatingCloset ? '…' : 'Create'}
+            </button>
+          </form>
+        )}
+
+        {myClosets.length === 0 && !showCreateForm ? (
+          <div className="text-center py-6 text-gray-400">
+            <Users size={28} className="mx-auto mb-2 opacity-30" />
+            <p className="text-sm">No closets yet — create one above</p>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {myClosets.map(closet => (
+              <ClosetCard
+                key={closet.id}
+                closet={closet}
+                isOwner
+                expanded={expandedClosetId === closet.id}
+                onToggle={() => setExpandedClosetId(prev => prev === closet.id ? null : closet.id)}
+                copied={copiedClosetId === closet.id}
+                onCopyLink={() => copyInviteLink(closet)}
+              />
+            ))}
           </div>
         )}
       </div>
 
-      {/* Share link */}
-      <div className="card p-4 mb-6">
-        <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
-          <Copy size={16} className="text-brand-700" /> Share invite link
-        </h3>
-        <div className="flex gap-2">
-          <div className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-sm text-gray-500 truncate">
-            {inviteLink}
-          </div>
-          <button
-            onClick={copyLink}
-            className={clsx(
-              'flex-shrink-0 px-4 py-2 rounded-xl text-sm font-semibold transition-all',
-              copied ? 'bg-green-600 text-white' : 'bg-brand-400 text-gray-900 hover:bg-brand-500'
-            )}
-          >
-            {copied ? 'Copied!' : 'Copy'}
-          </button>
-        </div>
-      </div>
-
-      {/* Pending invites I've sent */}
-      {outgoingInvites.length > 0 && (
-        <div className="mb-6">
-          <h3 className="font-semibold text-gray-700 text-sm mb-2">Pending invites</h3>
+      {/* ── Closets I've joined ──────────────────────────────────── */}
+      {joinedClosets.length > 0 && (
+        <div className="mb-5">
+          <h3 className="font-semibold text-gray-700 text-sm mb-2">Joined closets ({joinedClosets.length})</h3>
           <div className="flex flex-col gap-2">
-            {outgoingInvites.map(invite => (
-              <div key={invite.id} className="flex items-center justify-between card px-4 py-3">
-                <div className="flex items-center gap-2">
-                  <div className={clsx('w-8 h-8 rounded-full flex items-center justify-center text-gray-900 text-sm font-bold', invite.profile?.avatar_color ?? 'bg-gray-200')}>
-                    {invite.profile?.full_name?.charAt(0) ?? '?'}
-                  </div>
-                  <span className="text-sm text-gray-700">@{invite.profile?.username}</span>
-                </div>
-                <span className="tag bg-amber-100 text-amber-700">Pending</span>
-              </div>
+            {joinedClosets.map(closet => (
+              <ClosetCard
+                key={closet.id}
+                closet={closet}
+                isOwner={false}
+                expanded={expandedClosetId === closet.id}
+                onToggle={() => setExpandedClosetId(prev => prev === closet.id ? null : closet.id)}
+                copied={false}
+                onCopyLink={() => {}}
+              />
             ))}
           </div>
         </div>
       )}
 
-      {/* Friends in closet */}
-      <div>
-        <h3 className="font-semibold text-gray-700 text-sm mb-2">In your Closet ({friends.length})</h3>
-        {friends.length === 0 ? (
-          <div className="text-center py-8 text-gray-400">
-            <Users size={32} className="mx-auto mb-2 opacity-30" />
-            <p className="text-sm">No friends yet — invite them above!</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {friends.map(f => (
-              <div key={f.id} className="card flex items-center gap-3 p-3">
-                <div className={clsx('w-11 h-11 rounded-full flex items-center justify-center text-gray-900 font-bold text-lg flex-shrink-0', f.profile.avatar_color)}>
-                  {f.profile.full_name.charAt(0)}
+      {/* ── Invite by username ───────────────────────────────────── */}
+      {myClosets.length > 0 && (
+        <div className="card p-4">
+          <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+            <UserPlus size={16} className="text-brand-700" /> Invite by username
+          </h3>
+          <form onSubmit={handleInvite} className="flex flex-col gap-3">
+            <select
+              className="input-field"
+              value={selectedClosetId}
+              onChange={e => { setSelectedClosetId(e.target.value); setInviteError(''); }}
+              required
+            >
+              <option value="">Select a closet…</option>
+              {myClosets.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+            <input
+              type="text"
+              className="input-field"
+              placeholder="their_username"
+              value={username}
+              onChange={e => { setUsername(e.target.value); setInviteError(''); }}
+              required
+            />
+            {inviteError && <p className="text-orange-600 text-sm">{inviteError}</p>}
+            <button type="submit" className="btn-primary" disabled={inviting || !selectedClosetId}>
+              <UserPlus size={16} className="inline mr-1.5" />
+              {inviting ? 'Sending…' : 'Send invite'}
+            </button>
+          </form>
+          {justInvited && (
+            <div className="mt-3 flex items-center gap-2 text-green-700 text-sm font-medium bg-green-50 rounded-xl p-3">
+              <CheckCircle2 size={16} /> Invite sent to @{justInvited}!
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ClosetCard({ closet, isOwner, expanded, onToggle, copied, onCopyLink }: {
+  closet: Closet;
+  isOwner: boolean;
+  expanded: boolean;
+  onToggle: () => void;
+  copied: boolean;
+  onCopyLink: () => void;
+}) {
+  const memberCount = closet.members?.length ?? 0;
+
+  return (
+    <div className="card overflow-hidden">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center gap-3 p-3 text-left"
+      >
+        <div className="w-10 h-10 rounded-xl bg-brand-100 flex items-center justify-center flex-shrink-0">
+          <Users size={18} className="text-brand-700" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-gray-900 truncate">{closet.name}</p>
+          <p className="text-xs text-gray-500">{memberCount} member{memberCount !== 1 ? 's' : ''} · {isOwner ? 'Owner' : 'Member'}</p>
+        </div>
+        {expanded ? <ChevronUp size={16} className="text-gray-400 flex-shrink-0" /> : <ChevronDown size={16} className="text-gray-400 flex-shrink-0" />}
+      </button>
+
+      {expanded && (
+        <div className="border-t border-gray-100 px-3 pb-3">
+          {/* Members list */}
+          <div className="flex flex-col gap-1.5 mt-2 mb-3">
+            {(closet.members ?? []).map(m => (
+              <div key={m.id} className="flex items-center gap-2">
+                <div className={clsx('w-7 h-7 rounded-full flex items-center justify-center text-gray-900 text-xs font-bold flex-shrink-0', m.profile?.avatar_color ?? 'bg-gray-200')}>
+                  {m.profile?.full_name?.charAt(0) ?? '?'}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold text-gray-900">{f.profile.full_name}</p>
-                    {isNew(f.connectedAt) && (
-                      <span className="tag bg-brand-300 text-gray-900 text-[10px] font-bold">✨ New</span>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-500">@{f.profile.username} · {f.items.length} items</p>
-                </div>
-                <span className="tag bg-green-100 text-green-700 flex-shrink-0">✓ Joined</span>
+                <span className="text-sm text-gray-700">{m.profile?.full_name}</span>
+                <span className="text-xs text-gray-400">@{m.profile?.username}</span>
               </div>
             ))}
           </div>
-        )}
-      </div>
+
+          {/* Share invite link (owners only) */}
+          {isOwner && (
+            <button
+              onClick={onCopyLink}
+              className={clsx(
+                'w-full flex items-center justify-center gap-2 py-2 rounded-xl text-sm font-semibold transition-all',
+                copied ? 'bg-green-600 text-white' : 'bg-brand-400 text-gray-900 hover:bg-brand-500'
+              )}
+            >
+              <Copy size={14} />
+              {copied ? 'Link copied!' : 'Copy invite link'}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

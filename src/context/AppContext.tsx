@@ -2,13 +2,25 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { AppUser, Profile, ClothingItem, ClothingRequest, FriendWithItems, ClosetMember } from '@/types';
+import { AppUser, Profile, Closet, ClosetMember, ClothingItem, ClothingRequest, FriendWithItems } from '@/types';
 
 interface AppContextType {
   currentUser: AppUser | null;
   loading: boolean;
 
   signIn: (email: string, password: string) => Promise<string | null>;
+
+  // Closets
+  closets: Closet[];
+  pendingInvites: ClosetMember[];
+  createCloset: (name: string) => Promise<Closet | null>;
+  sendInvite: (username: string, closetId: string) => Promise<{ error: string | null }>;
+  acceptInvite: (inviteId: string) => Promise<void>;
+  declineInvite: (inviteId: string) => Promise<void>;
+  refreshClosets: () => Promise<void>;
+
+  // Derived from closets — unique friends across all shared closets
+  friends: FriendWithItems[];
 
   myItems: ClothingItem[];
   addItem: (item: Omit<ClothingItem, 'id' | 'user_id' | 'created_at'>) => Promise<string | null>;
@@ -19,13 +31,6 @@ interface AppContextType {
   createRequest: (itemId: string, ownerId: string, message: string) => Promise<void>;
   updateRequestStatus: (id: string, status: ClothingRequest['status']) => Promise<void>;
   refreshRequests: () => Promise<void>;
-
-  friends: FriendWithItems[];
-  pendingInvites: ClosetMember[];
-  sendInvite: (username: string) => Promise<{ error: string | null }>;
-  acceptInvite: (inviteId: string) => Promise<void>;
-  declineInvite: (inviteId: string) => Promise<void>;
-  refreshFriends: () => Promise<void>;
 
   updateProfile: (updates: { full_name?: string; phone_number?: string }) => Promise<string | null>;
   signOut: () => Promise<void>;
@@ -38,10 +43,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [closets, setClosets] = useState<Closet[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<ClosetMember[]>([]);
+  const [friends, setFriends] = useState<FriendWithItems[]>([]);
   const [myItems, setMyItems] = useState<ClothingItem[]>([]);
   const [requests, setRequests] = useState<ClothingRequest[]>([]);
-  const [friends, setFriends] = useState<FriendWithItems[]>([]);
-  const [pendingInvites, setPendingInvites] = useState<ClosetMember[]>([]);
 
   // ─── Data loaders ──────────────────────────────────────────────────────────
 
@@ -57,79 +63,108 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const loadRequests = useCallback(async (userId: string) => {
     const { data } = await supabase
       .from('clothing_requests')
-      .select(`
-        *,
-        item:clothing_items(*),
-        requester:profiles!requester_id(*),
-        owner:profiles!owner_id(*)
-      `)
+      .select(`*, item:clothing_items(*), requester:profiles!requester_id(*), owner:profiles!owner_id(*)`)
       .or(`requester_id.eq.${userId},owner_id.eq.${userId}`)
       .order('created_at', { ascending: false });
     setRequests((data as ClothingRequest[]) ?? []);
   }, [supabase]);
 
-  const loadFriendsAndInvites = useCallback(async (userId: string) => {
-    const { data: members, error } = await supabase
+  const loadClosetsAndFriends = useCallback(async (userId: string) => {
+    // Load all closets where user is an accepted member (includes closets they own)
+    const { data: memberRows, error } = await supabase
       .from('closet_members')
-      .select('*')
-      .or(`owner_id.eq.${userId},member_id.eq.${userId}`);
+      .select('*, closet:closets(*)')
+      .eq('user_id', userId)
+      .eq('status', 'accepted');
 
     if (error) {
-      console.error('[loadFriendsAndInvites] query failed:', error.message, error.code);
+      console.error('[loadClosetsAndFriends] member query failed:', error.message);
       return;
     }
-    if (!members) return;
 
-    const accepted = members.filter(m => m.status === 'accepted');
-    // All pending invites (both sent and received)
-    const pending = members.filter(m => m.status === 'pending');
+    // Load pending invites for the user
+    const { data: pendingRows } = await supabase
+      .from('closet_members')
+      .select('*, closet:closets(*)')
+      .eq('user_id', userId)
+      .eq('status', 'pending');
 
-    // Build pending invites with the other person's profile
     const pendingWithProfiles: ClosetMember[] = await Promise.all(
-      pending.map(async m => {
-        const otherId = m.owner_id === userId ? m.member_id : m.owner_id;
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', otherId)
+      (pendingRows ?? []).map(async m => {
+        const { data: closet } = await supabase
+          .from('closets')
+          .select('*, owner:profiles!owner_id(*)')
+          .eq('id', m.closet_id)
           .single();
-        return { ...m, profile: profile as Profile };
+        return { ...m, closet: closet ?? m.closet };
       })
     );
     setPendingInvites(pendingWithProfiles);
 
-    // Build friends list with items
-    const friendProfiles: FriendWithItems[] = await Promise.all(
-      accepted.map(async m => {
-        const friendId = m.owner_id === userId ? m.member_id : m.owner_id;
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', friendId)
-          .single();
+    if (!memberRows || memberRows.length === 0) {
+      setClosets([]);
+      setFriends([]);
+      return;
+    }
+
+    const closetIds = memberRows.map(m => m.closet_id);
+
+    // For each closet the user is in, load all accepted members
+    const { data: allMembers } = await supabase
+      .from('closet_members')
+      .select('*, profile:profiles(*)')
+      .in('closet_id', closetIds)
+      .eq('status', 'accepted');
+
+    // Build closets with their members attached
+    const closetMap = new Map<string, Closet>();
+    for (const m of memberRows) {
+      if (m.closet) {
+        closetMap.set(m.closet_id, { ...m.closet, members: [] });
+      }
+    }
+    for (const m of (allMembers ?? [])) {
+      const closet = closetMap.get(m.closet_id);
+      if (closet) {
+        closet.members = [...(closet.members ?? []), m as ClosetMember];
+      }
+    }
+    setClosets(Array.from(closetMap.values()));
+
+    // Derive unique friends (accepted members sharing a closet, excluding self)
+    const friendMap = new Map<string, FriendWithItems>();
+    for (const m of (allMembers ?? [])) {
+      if (m.user_id === userId || !m.profile) continue;
+      if (!friendMap.has(m.user_id)) {
+        friendMap.set(m.user_id, {
+          id: m.user_id,
+          profile: m.profile as Profile,
+          items: [],
+        });
+      }
+    }
+
+    // Load items for each unique friend
+    const friendList = await Promise.all(
+      Array.from(friendMap.values()).map(async f => {
         const { data: items } = await supabase
           .from('clothing_items')
           .select('*')
-          .eq('user_id', friendId)
+          .eq('user_id', f.id)
           .order('created_at', { ascending: false });
-        return {
-          id: friendId,
-          profile: profile as Profile,
-          items: (items as ClothingItem[]) ?? [],
-          connectedAt: m.created_at,
-        };
+        return { ...f, items: (items as ClothingItem[]) ?? [] };
       })
     );
-    setFriends(friendProfiles);
+    setFriends(friendList);
   }, [supabase]);
 
   const loadAllData = useCallback(async (userId: string) => {
     await Promise.all([
       loadMyItems(userId),
       loadRequests(userId),
-      loadFriendsAndInvites(userId),
+      loadClosetsAndFriends(userId),
     ]);
-  }, [loadMyItems, loadRequests, loadFriendsAndInvites]);
+  }, [loadMyItems, loadRequests, loadClosetsAndFriends]);
 
   // ─── Auth init ────────────────────────────────────────────────────────────
 
@@ -148,7 +183,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         created_at: user.created_at,
       },
     });
-    // Upsert profile in case the signup trigger didn't fire
     supabase.from('profiles')
       .upsert({
         id: user.id,
@@ -174,6 +208,84 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (error) return error.message;
     if (data.user) applyUser(data.user);
     return null;
+  }
+
+  // ─── Closet mutations ─────────────────────────────────────────────────────
+
+  async function createCloset(name: string): Promise<Closet | null> {
+    if (!currentUser) return null;
+
+    const { data: closet, error } = await supabase
+      .from('closets')
+      .insert({ owner_id: currentUser.id, name })
+      .select()
+      .single();
+
+    if (error || !closet) {
+      console.error('[createCloset] failed:', error?.message);
+      return null;
+    }
+
+    // Add owner as accepted member of their own closet
+    await supabase.from('closet_members').insert({
+      closet_id: closet.id,
+      user_id: currentUser.id,
+      status: 'accepted',
+    });
+
+    await loadClosetsAndFriends(currentUser.id);
+    return closet as Closet;
+  }
+
+  async function sendInvite(username: string, closetId: string): Promise<{ error: string | null }> {
+    if (!currentUser) return { error: 'Not logged in' };
+
+    const { data: profile, error: lookupError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('username', username)
+      .single();
+
+    if (lookupError || !profile) return { error: 'User not found. Ask them to sign up first.' };
+    if (profile.id === currentUser.id) return { error: "You can't invite yourself." };
+
+    // Check if already a member or invited
+    const { data: existing } = await supabase
+      .from('closet_members')
+      .select('id, status')
+      .eq('closet_id', closetId)
+      .eq('user_id', profile.id)
+      .maybeSingle();
+
+    if (existing) {
+      return { error: existing.status === 'accepted' ? 'Already a member of this closet.' : 'Invite already pending.' };
+    }
+
+    const { error: insertError } = await supabase
+      .from('closet_members')
+      .insert({ closet_id: closetId, user_id: profile.id, status: 'pending' });
+
+    if (insertError) return { error: insertError.message };
+
+    await loadClosetsAndFriends(currentUser.id);
+    return { error: null };
+  }
+
+  async function acceptInvite(inviteId: string) {
+    await supabase
+      .from('closet_members')
+      .update({ status: 'accepted' })
+      .eq('id', inviteId);
+    if (currentUser) await loadClosetsAndFriends(currentUser.id);
+  }
+
+  async function declineInvite(inviteId: string) {
+    await supabase.from('closet_members').delete().eq('id', inviteId);
+    if (currentUser) await loadClosetsAndFriends(currentUser.id);
+  }
+
+  async function refreshClosets() {
+    if (currentUser) await loadClosetsAndFriends(currentUser.id);
   }
 
   // ─── Item mutations ────────────────────────────────────────────────────────
@@ -232,63 +344,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (currentUser) await loadRequests(currentUser.id);
   }
 
-  async function refreshFriends() {
-    if (currentUser) await loadFriendsAndInvites(currentUser.id);
-  }
-
-  // ─── Friend / invite mutations ─────────────────────────────────────────────
-
-  async function sendInvite(username: string): Promise<{ error: string | null }> {
-    if (!currentUser) return { error: 'Not logged in' };
-
-    const { data: profile, error: lookupError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('username', username)
-      .single();
-
-    if (lookupError || !profile) return { error: 'User not found. Ask them to sign up first.' };
-    if (profile.id === currentUser.id) return { error: "You can't invite yourself." };
-
-    // Check both directions to prevent duplicate connections
-    const { data: existing } = await supabase
-      .from('closet_members')
-      .select('id, status')
-      .or(
-        `and(owner_id.eq.${currentUser.id},member_id.eq.${profile.id}),and(owner_id.eq.${profile.id},member_id.eq.${currentUser.id})`
-      )
-      .maybeSingle();
-
-    if (existing) {
-      return { error: existing.status === 'accepted' ? 'Already connected.' : 'Invite already sent or pending.' };
-    }
-
-    const { error: insertError } = await supabase
-      .from('closet_members')
-      .insert({ owner_id: currentUser.id, member_id: profile.id });
-
-    if (insertError) return { error: insertError.message };
-
-    await loadFriendsAndInvites(currentUser.id);
-    return { error: null };
-  }
-
-  async function acceptInvite(inviteId: string) {
-    await supabase
-      .from('closet_members')
-      .update({ status: 'accepted' })
-      .eq('id', inviteId);
-    if (currentUser) await loadFriendsAndInvites(currentUser.id);
-  }
-
-  async function declineInvite(inviteId: string) {
-    await supabase
-      .from('closet_members')
-      .delete()
-      .eq('id', inviteId);
-    if (currentUser) await loadFriendsAndInvites(currentUser.id);
-  }
-
   // ─── Profile mutations ─────────────────────────────────────────────────────
 
   async function updateProfile(updates: { full_name?: string; phone_number?: string }): Promise<string | null> {
@@ -300,12 +355,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .select()
       .single();
     if (error) {
-      console.error('[updateProfile] failed:', error.message, error.code, error.details);
+      console.error('[updateProfile] failed:', error.message, error.code);
       return error.message;
     }
-    if (data) {
-      setCurrentUser(prev => prev ? { ...prev, profile: data as Profile } : prev);
-    }
+    if (data) setCurrentUser(prev => prev ? { ...prev, profile: data as Profile } : prev);
     return null;
   }
 
@@ -314,6 +367,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCurrentUser(null);
     setMyItems([]);
     setRequests([]);
+    setClosets([]);
     setFriends([]);
     setPendingInvites([]);
   }
@@ -322,9 +376,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     <AppContext.Provider value={{
       currentUser, loading,
       signIn,
+      closets, pendingInvites, createCloset, sendInvite, acceptInvite, declineInvite, refreshClosets,
+      friends,
       myItems, addItem, updateItem, deleteItem,
       requests, createRequest, updateRequestStatus, refreshRequests,
-      friends, pendingInvites, sendInvite, acceptInvite, declineInvite, refreshFriends,
       updateProfile, signOut,
     }}>
       {children}

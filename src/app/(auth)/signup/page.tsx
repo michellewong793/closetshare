@@ -15,8 +15,8 @@ export default function SignupPage() {
   const [loading, setLoading] = useState(false);
   const [checkEmail, setCheckEmail] = useState(false);
 
-  const inviterUsername = typeof window !== 'undefined'
-    ? new URLSearchParams(window.location.search).get('inviter')
+  const closetId = typeof window !== 'undefined'
+    ? new URLSearchParams(window.location.search).get('closet_id')
     : null;
 
   async function handleSubmit(e: React.FormEvent) {
@@ -61,38 +61,46 @@ export default function SignupPage() {
         if (upsertError) console.error('[signup] profile upsert failed:', upsertError.message);
       }
 
-      // Auto-connect to inviter if signup came from a personal invite link
-      // Works regardless of whether email confirmation is required (data.session may be null)
-      if (data.user && inviterUsername) {
-        const { data: inviterProfile, error: inviterError } = await supabase
-          .from('profiles')
-          .select('id, phone_number, full_name')
-          .eq('username', inviterUsername)
+      // Auto-join closet if signup came from a closet invite link
+      if (data.user && closetId) {
+        // Verify closet exists and get owner info for SMS notification
+        const { data: closet, error: closetError } = await supabase
+          .from('closets')
+          .select('id, name, owner_id, owner:profiles!owner_id(phone_number, full_name)')
+          .eq('id', closetId)
           .single();
 
-        if (inviterError) {
-          console.error('[invite] inviter lookup failed:', inviterError.message);
+        if (closetError) {
+          console.error('[invite] closet lookup failed:', closetError.message);
         }
 
-        if (inviterProfile && inviterProfile.id !== data.user.id) {
-          const { error: connectError } = await supabase.from('closet_members').insert({
-            owner_id: data.user.id,
-            member_id: inviterProfile.id,
-            status: 'accepted',
-          });
+        if (closet && closet.owner_id !== data.user.id) {
+          // Check not already a member
+          const { data: existing } = await supabase
+            .from('closet_members')
+            .select('id')
+            .eq('closet_id', closetId)
+            .eq('user_id', data.user.id)
+            .maybeSingle();
 
-          if (connectError) {
-            console.error('[invite] closet_members insert failed:', connectError.message);
+          if (!existing) {
+            const { error: joinError } = await supabase.from('closet_members').insert({
+              closet_id: closetId,
+              user_id: data.user.id,
+              status: 'accepted',
+            });
+            if (joinError) console.error('[invite] join closet failed:', joinError.message);
           }
 
-          // SMS the inviter — fire-and-forget, don't block navigation
-          if (inviterProfile.phone_number) {
+          // SMS the closet owner — fire-and-forget
+          const owner = Array.isArray(closet.owner) ? closet.owner[0] : closet.owner;
+          if (owner?.phone_number) {
             fetch('/api/notify', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                to: inviterProfile.phone_number,
-                message: `👗 ClosetShare: ${fullName.split(' ')[0]} just signed up and joined your closet!`,
+                to: owner.phone_number,
+                message: `👗 ClosetShare: ${fullName.split(' ')[0]} just signed up and joined your closet "${closet.name}"!`,
               }),
             }).then(async res => {
               if (!res.ok) {
@@ -100,8 +108,6 @@ export default function SignupPage() {
                 console.error('[invite] SMS API error:', res.status, body);
               }
             }).catch(err => console.error('[invite] SMS fetch failed:', err));
-          } else {
-            console.warn('[invite] inviter has no phone number, skipping SMS');
           }
         }
       }
