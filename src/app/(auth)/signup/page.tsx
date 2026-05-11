@@ -56,13 +56,18 @@ export default function SignupPage() {
         return;
       }
 
-      // Update phone number on the auto-created profile
-      if (data.user && phone) {
-        const { error: phoneError } = await supabase
+      // Ensure profile row exists (trigger may have failed silently)
+      if (data.user) {
+        const fallbackUsername = data.user.email!.split('@')[0];
+        const { error: upsertError } = await supabase
           .from('profiles')
-          .update({ phone_number: phone })
-          .eq('id', data.user.id);
-        if (phoneError) console.error('[signup] phone save failed:', phoneError.message, phoneError.code);
+          .upsert({
+            id: data.user.id,
+            username: fallbackUsername,
+            full_name: fullName || fallbackUsername,
+            ...(phone ? { phone_number: phone } : {}),
+          }, { onConflict: 'id', ignoreDuplicates: false });
+        if (upsertError) console.error('[signup] profile upsert failed:', upsertError.message);
       }
 
       // Auto-connect to inviter if signup came from a personal invite link
