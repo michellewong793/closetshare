@@ -20,9 +20,7 @@ export default function InvitePage() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const inviteLink = typeof window !== 'undefined'
-    ? `${window.location.origin}/signup?inviter=${currentUser?.profile.username ?? ''}`
-    : 'https://closetshare.app/signup';
+  const inviteLink = `https://closetshare-beta.vercel.app/signup?inviter=${currentUser?.profile.username ?? ''}`;
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault();
