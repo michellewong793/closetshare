@@ -24,16 +24,19 @@ export default function MyClosetPage() {
   const [draft, setDraft] = useState<Partial<ClothingItem>>(blankDraft());
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   async function saveItem() {
     if (!draft.name || !draft.size) return;
     setSaving(true);
+    setSaveError('');
 
     if (editId) {
       await updateItem(editId, draft);
       setEditId(null);
+      setDraft(blankDraft());
     } else {
-      await addItem({
+      const id = await addItem({
         name: draft.name!,
         description: draft.description ?? '',
         category: draft.category!,
@@ -41,10 +44,15 @@ export default function MyClosetPage() {
         available: draft.available ?? true,
         image_url: draft.image_url,
       });
+      if (!id) {
+        setSaveError('Failed to save item — check the console for details.');
+        setSaving(false);
+        return;
+      }
       setAdding(false);
+      setDraft(blankDraft());
     }
 
-    setDraft(blankDraft());
     setSaving(false);
   }
 
@@ -97,6 +105,7 @@ export default function MyClosetPage() {
               existingUrl={draft.image_url}
               onCapture={url => setDraft(d => ({ ...d, image_url: url }))}
             />
+            {saveError && <p className="text-orange-600 text-sm">{saveError}</p>}
             <button className="btn-primary" onClick={saveItem} disabled={!draft.name || !draft.size || saving}>
               <Check size={16} className="inline mr-1" />{saving ? 'Saving…' : editId ? 'Save changes' : 'Add to closet'}
             </button>

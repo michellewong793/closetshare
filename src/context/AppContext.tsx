@@ -134,20 +134,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   function applyUser(user: { id: string; email?: string; created_at: string; user_metadata?: Record<string, string> }) {
     const meta = user.user_metadata ?? {};
+    const fallbackUsername = (user.email ?? '').split('@')[0];
     setCurrentUser({
       id: user.id,
       email: user.email ?? '',
       profile: {
         id: user.id,
-        full_name: meta.full_name ?? '',
-        username: meta.username ?? '',
+        full_name: meta.full_name ?? fallbackUsername,
+        username: meta.username ?? fallbackUsername,
         avatar_color: 'bg-yellow-300',
         phone_number: meta.phone_number ?? '',
         created_at: user.created_at,
       },
     });
-    supabase.from('profiles').select('*').eq('id', user.id).single()
-      .then(({ data: p }) => { if (p) setCurrentUser(prev => prev ? { ...prev, profile: p as Profile } : prev); });
+    // Upsert profile in case the signup trigger didn't fire
+    supabase.from('profiles')
+      .upsert({
+        id: user.id,
+        username: meta.username ?? fallbackUsername,
+        full_name: meta.full_name ?? fallbackUsername,
+      }, { onConflict: 'id', ignoreDuplicates: true })
+      .then(() =>
+        supabase.from('profiles').select('*').eq('id', user.id).single()
+          .then(({ data: p }) => { if (p) setCurrentUser(prev => prev ? { ...prev, profile: p as Profile } : prev); })
+      );
     loadAllData(user.id);
   }
 
@@ -174,7 +184,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .insert({ ...item, user_id: currentUser.id })
       .select()
       .single();
-    if (error || !data) return null;
+    if (error) { console.error('[addItem] insert failed:', error.message, error.code, error.details); return null; }
+    if (!data) return null;
     setMyItems(prev => [data as ClothingItem, ...prev]);
     return data.id;
   }
