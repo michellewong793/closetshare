@@ -1,14 +1,20 @@
 -- ClosetShare — Supabase Storage Setup
--- Run this in your Supabase SQL Editor after schema.sql
+-- Safe to re-run: all statements are idempotent
 
 -- ─── Create bucket ────────────────────────────────────────────────────────────
 insert into storage.buckets (id, name, public)
 values ('item-photos', 'item-photos', true)
-on conflict (id) do nothing;
+on conflict (id) do update set public = true;
 
 -- ─── RLS policies ─────────────────────────────────────────────────────────────
 
--- Anyone can read photos (bucket is public, but belt-and-suspenders)
+do $$ begin
+  drop policy if exists "Photos are publicly readable" on storage.objects;
+  drop policy if exists "Users can upload own photos" on storage.objects;
+  drop policy if exists "Users can delete own photos" on storage.objects;
+end $$;
+
+-- Anyone can read photos (bucket is public)
 create policy "Photos are publicly readable"
   on storage.objects for select
   using (bucket_id = 'item-photos');
