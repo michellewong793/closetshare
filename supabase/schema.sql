@@ -83,7 +83,11 @@ create policy "Items visible to closet members" on public.clothing_items for sel
     user_id = auth.uid() or
     exists (
       select 1 from public.closet_members
-      where member_id = auth.uid() and owner_id = clothing_items.user_id and status = 'accepted'
+      where status = 'accepted'
+      and (
+        (member_id = auth.uid() and owner_id = clothing_items.user_id) or
+        (owner_id = auth.uid() and member_id = clothing_items.user_id)
+      )
     )
   );
 create policy "Users manage own items" on public.clothing_items for all using (user_id = auth.uid());
