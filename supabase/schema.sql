@@ -83,7 +83,11 @@ create policy "Items visible to closet members" on public.clothing_items for sel
     user_id = auth.uid() or
     exists (
       select 1 from public.closet_members
-      where member_id = auth.uid() and owner_id = clothing_items.user_id and status = 'accepted'
+      where status = 'accepted'
+      and (
+        (member_id = auth.uid() and owner_id = clothing_items.user_id) or
+        (owner_id = auth.uid() and member_id = clothing_items.user_id)
+      )
     )
   );
 create policy "Users manage own items" on public.clothing_items for all using (user_id = auth.uid());
@@ -97,3 +101,4 @@ create policy "Owner can update status"    on public.clothing_requests for updat
 create policy "Closet members visible to parties" on public.closet_members for select using (owner_id = auth.uid() or member_id = auth.uid());
 create policy "Anyone can send invite"            on public.closet_members for insert with check (owner_id = auth.uid());
 create policy "Member can accept invite"          on public.closet_members for update using (member_id = auth.uid());
+create policy "Either party can remove connection" on public.closet_members for delete using (owner_id = auth.uid() or member_id = auth.uid());

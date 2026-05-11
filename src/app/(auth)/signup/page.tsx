@@ -1,15 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Shirt } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { useApp } from '@/context/AppContext';
 
 export default function SignupPage() {
-  const router = useRouter();
-  const { currentUser } = useApp();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -18,11 +14,6 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [checkEmail, setCheckEmail] = useState(false);
-
-  // Navigate once the context confirms the session is fully loaded
-  useEffect(() => {
-    if (currentUser) router.replace('/dashboard');
-  }, [currentUser, router]);
 
   const inviterUsername = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('inviter')
@@ -56,17 +47,23 @@ export default function SignupPage() {
         return;
       }
 
-      // Update phone number on the auto-created profile
-      if (data.user && phone) {
-        const { error: phoneError } = await supabase
+      // Ensure profile row exists (trigger may have failed silently)
+      if (data.user) {
+        const fallbackUsername = data.user.email!.split('@')[0];
+        const { error: upsertError } = await supabase
           .from('profiles')
-          .update({ phone_number: phone })
-          .eq('id', data.user.id);
-        if (phoneError) console.error('[signup] phone save failed:', phoneError.message, phoneError.code);
+          .upsert({
+            id: data.user.id,
+            username: fallbackUsername,
+            full_name: fullName || fallbackUsername,
+            ...(phone ? { phone_number: phone } : {}),
+          }, { onConflict: 'id', ignoreDuplicates: false });
+        if (upsertError) console.error('[signup] profile upsert failed:', upsertError.message);
       }
 
       // Auto-connect to inviter if signup came from a personal invite link
-      if (data.user && data.session && inviterUsername) {
+      // Works regardless of whether email confirmation is required (data.session may be null)
+      if (data.user && inviterUsername) {
         const { data: inviterProfile, error: inviterError } = await supabase
           .from('profiles')
           .select('id, phone_number, full_name')
@@ -109,12 +106,14 @@ export default function SignupPage() {
         }
       }
 
-      if (!data.session) {
+      if (data.session) {
+        // Session exists — hard redirect so AppContext reinitializes and picks up the new session
+        window.location.href = '/dashboard';
+      } else {
         // Email confirmation required — show check-email screen
         setCheckEmail(true);
         setLoading(false);
       }
-      // If session exists, useEffect above will navigate once currentUser is set
     } catch (err) {
       console.error('[signup] unexpected error:', err);
       setError('Something went wrong. Please try again.');

@@ -24,6 +24,7 @@ interface AppContextType {
   pendingInvites: ClosetMember[];
   sendInvite: (username: string) => Promise<{ error: string | null }>;
   acceptInvite: (inviteId: string) => Promise<void>;
+  declineInvite: (inviteId: string) => Promise<void>;
   refreshFriends: () => Promise<void>;
 
   updateProfile: (updates: { full_name?: string; phone_number?: string }) => Promise<string | null>;
@@ -249,14 +250,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (lookupError || !profile) return { error: 'User not found. Ask them to sign up first.' };
     if (profile.id === currentUser.id) return { error: "You can't invite yourself." };
 
+    // Check both directions to prevent duplicate connections
+    const { data: existing } = await supabase
+      .from('closet_members')
+      .select('id, status')
+      .or(
+        `and(owner_id.eq.${currentUser.id},member_id.eq.${profile.id}),and(owner_id.eq.${profile.id},member_id.eq.${currentUser.id})`
+      )
+      .maybeSingle();
+
+    if (existing) {
+      return { error: existing.status === 'accepted' ? 'Already connected.' : 'Invite already sent or pending.' };
+    }
+
     const { error: insertError } = await supabase
       .from('closet_members')
       .insert({ owner_id: currentUser.id, member_id: profile.id });
 
-    if (insertError) {
-      if (insertError.code === '23505') return { error: 'Already invited or connected.' };
-      return { error: insertError.message };
-    }
+    if (insertError) return { error: insertError.message };
 
     await loadFriendsAndInvites(currentUser.id);
     return { error: null };
@@ -266,6 +277,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     await supabase
       .from('closet_members')
       .update({ status: 'accepted' })
+      .eq('id', inviteId);
+    if (currentUser) await loadFriendsAndInvites(currentUser.id);
+  }
+
+  async function declineInvite(inviteId: string) {
+    await supabase
+      .from('closet_members')
+      .delete()
       .eq('id', inviteId);
     if (currentUser) await loadFriendsAndInvites(currentUser.id);
   }
@@ -292,6 +311,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   async function signOut() {
     await supabase.auth.signOut();
+    setCurrentUser(null);
+    setMyItems([]);
+    setRequests([]);
+    setFriends([]);
+    setPendingInvites([]);
   }
 
   return (
@@ -300,7 +324,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       signIn,
       myItems, addItem, updateItem, deleteItem,
       requests, createRequest, updateRequestStatus, refreshRequests,
-      friends, pendingInvites, sendInvite, acceptInvite, refreshFriends,
+      friends, pendingInvites, sendInvite, acceptInvite, declineInvite, refreshFriends,
       updateProfile, signOut,
     }}>
       {children}
