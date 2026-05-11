@@ -66,7 +66,8 @@ export default function SignupPage() {
       }
 
       // Auto-connect to inviter if signup came from a personal invite link
-      if (data.user && data.session && inviterUsername) {
+      // Works regardless of whether email confirmation is required (data.session may be null)
+      if (data.user && inviterUsername) {
         const { data: inviterProfile, error: inviterError } = await supabase
           .from('profiles')
           .select('id, phone_number, full_name')

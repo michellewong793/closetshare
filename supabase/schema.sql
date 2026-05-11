@@ -97,3 +97,4 @@ create policy "Owner can update status"    on public.clothing_requests for updat
 create policy "Closet members visible to parties" on public.closet_members for select using (owner_id = auth.uid() or member_id = auth.uid());
 create policy "Anyone can send invite"            on public.closet_members for insert with check (owner_id = auth.uid());
 create policy "Member can accept invite"          on public.closet_members for update using (member_id = auth.uid());
+create policy "Either party can remove connection" on public.closet_members for delete using (owner_id = auth.uid() or member_id = auth.uid());

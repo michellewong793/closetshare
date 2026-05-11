@@ -12,7 +12,7 @@ function isNew(connectedAt: string) {
 }
 
 export default function InvitePage() {
-  const { friends, pendingInvites, sendInvite, acceptInvite, refreshFriends, currentUser } = useApp();
+  const { friends, pendingInvites, sendInvite, acceptInvite, declineInvite, refreshFriends, currentUser } = useApp();
   const [username, setUsername] = useState('');
   const [inviteError, setInviteError] = useState('');
   const [justInvited, setJustInvited] = useState<string | null>(null);
@@ -85,12 +85,20 @@ export default function InvitePage() {
                   <p className="font-semibold text-gray-900">{invite.profile?.full_name}</p>
                   <p className="text-xs text-gray-500">@{invite.profile?.username}</p>
                 </div>
-                <button
-                  onClick={() => acceptInvite(invite.id)}
-                  className="flex-shrink-0 px-3 py-1.5 bg-brand-400 text-gray-900 text-xs font-semibold rounded-xl"
-                >
-                  Accept
-                </button>
+                <div className="flex gap-2 flex-shrink-0">
+                  <button
+                    onClick={() => declineInvite(invite.id)}
+                    className="px-3 py-1.5 bg-gray-100 text-gray-600 text-xs font-semibold rounded-xl"
+                  >
+                    Decline
+                  </button>
+                  <button
+                    onClick={() => acceptInvite(invite.id)}
+                    className="px-3 py-1.5 bg-brand-400 text-gray-900 text-xs font-semibold rounded-xl"
+                  >
+                    Accept
+                  </button>
+                </div>
               </div>
             ))}
           </div>
