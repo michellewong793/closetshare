@@ -1,15 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Shirt } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { useApp } from '@/context/AppContext';
 
 export default function SignupPage() {
-  const router = useRouter();
-  const { currentUser } = useApp();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -18,11 +14,6 @@ export default function SignupPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [checkEmail, setCheckEmail] = useState(false);
-
-  // Navigate once the context confirms the session is fully loaded
-  useEffect(() => {
-    if (currentUser) router.replace('/dashboard');
-  }, [currentUser, router]);
 
   const inviterUsername = typeof window !== 'undefined'
     ? new URLSearchParams(window.location.search).get('inviter')
@@ -115,12 +106,14 @@ export default function SignupPage() {
         }
       }
 
-      if (!data.session) {
+      if (data.session) {
+        // Session exists — hard redirect so AppContext reinitializes and picks up the new session
+        window.location.href = '/dashboard';
+      } else {
         // Email confirmation required — show check-email screen
         setCheckEmail(true);
         setLoading(false);
       }
-      // If session exists, useEffect above will navigate once currentUser is set
     } catch (err) {
       console.error('[signup] unexpected error:', err);
       setError('Something went wrong. Please try again.');
