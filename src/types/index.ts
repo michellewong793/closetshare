@@ -19,14 +19,24 @@ export interface ClothingItem {
   created_at: string;
 }
 
-export interface ClosetMember {
+export interface Closet {
   id: string;
   owner_id: string;
-  member_id: string;
+  name: string;
+  created_at: string;
+  // joined
+  members?: ClosetMember[];
+}
+
+export interface ClosetMember {
+  id: string;
+  closet_id: string;
+  user_id: string;
   status: 'pending' | 'accepted';
   created_at: string;
   // joined
   profile?: Profile;
+  closet?: Closet;
 }
 
 export interface ClothingRequest {
@@ -51,11 +61,6 @@ export interface AppUser {
 
 export interface FriendWithItems {
   id: string;
-  email?: string;
   profile: Profile;
   items: ClothingItem[];
-  connectedAt: string; // closet_members.created_at
 }
-
-/** @deprecated use AppUser */
-export type MockUser = AppUser;
