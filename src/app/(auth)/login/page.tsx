@@ -1,40 +1,31 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, Shirt } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
 import { useApp } from '@/context/AppContext';
 
 export default function LoginPage() {
+  const { signIn } = useApp();
   const router = useRouter();
-  const { currentUser } = useApp();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Navigate once the context confirms the session is fully loaded
-  useEffect(() => {
-    if (currentUser) router.replace('/dashboard');
-  }, [currentUser, router]);
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setLoading(true);
 
-    const supabase = createClient();
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+    const err = await signIn(email, password);
 
-    if (authError) {
-      setError(authError.message);
-      setLoading(false);
-      return;
-    }
-    // Session established — useEffect above navigates once currentUser is set
+    setLoading(false);
+    if (err) { setError(err); return; }
+
+    router.push('/dashboard');
   }
 
   return (
