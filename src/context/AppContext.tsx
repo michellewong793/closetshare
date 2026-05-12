@@ -320,7 +320,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   async function createItemRequest(description: string, category?: string, size?: string, referenceUrl?: string, photoUrl?: string) {
     if (!currentUser) return;
-    const { data } = await supabase
+    const { error } = await supabase
       .from('item_requests')
       .insert({
         requester_id: currentUser.id,
@@ -329,10 +329,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         size: size || null,
         reference_url: referenceUrl || null,
         photo_url: photoUrl || null,
-      })
-      .select('*, requester:profiles!requester_id(*)')
-      .single();
-    if (data) setItemRequests(prev => [data as ItemRequest, ...prev]);
+      });
+    if (error) {
+      console.error('[createItemRequest] insert failed:', error.message, error.code);
+      return;
+    }
+    await loadItemRequests(currentUser.id);
   }
 
   async function closeItemRequest(id: string) {
