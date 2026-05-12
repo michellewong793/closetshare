@@ -57,5 +57,19 @@ export interface FriendWithItems {
   connectedAt: string; // closet_members.created_at
 }
 
+export interface ItemRequest {
+  id: string;
+  requester_id: string;
+  description: string;
+  category?: string;
+  size?: string;
+  reference_url?: string;
+  photo_url?: string;
+  status: 'open' | 'fulfilled' | 'closed';
+  created_at: string;
+  // joined
+  requester?: Profile;
+}
+
 /** @deprecated use AppUser */
 export type MockUser = AppUser;

@@ -15,7 +15,7 @@ const navItems = [
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { currentUser, loading } = useApp();
+  const { currentUser, loading, unreadItemRequestCount } = useApp();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -55,9 +55,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="flex items-center justify-around px-2 py-2 safe-area-pb">
           {navItems.map(({ href, icon: Icon, label }) => {
             const active = pathname === href || (href !== '/dashboard' && pathname.startsWith(href));
+            const badge = href === '/requests' && unreadItemRequestCount > 0 ? unreadItemRequestCount : 0;
             return (
               <Link key={href} href={href} className={clsx('nav-item py-1 px-4', active && 'active')}>
-                <Icon size={22} strokeWidth={active ? 2.5 : 1.8} />
+                <div className="relative">
+                  <Icon size={22} strokeWidth={active ? 2.5 : 1.8} />
+                  {badge > 0 && (
+                    <span className="absolute -top-1 -right-1.5 w-4 h-4 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                      {badge > 9 ? '9+' : badge}
+                    </span>
+                  )}
+                </div>
                 <span>{label}</span>
               </Link>
             );
