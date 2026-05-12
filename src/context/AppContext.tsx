@@ -29,7 +29,7 @@ interface AppContextType {
 
   itemRequests: ItemRequest[];
   unreadItemRequestCount: number;
-  createItemRequest: (description: string, category?: string, size?: string) => Promise<void>;
+  createItemRequest: (description: string, category?: string, size?: string, referenceUrl?: string, photoUrl?: string) => Promise<void>;
   closeItemRequest: (id: string) => Promise<void>;
   markItemRequestsRead: () => Promise<void>;
 
@@ -318,11 +318,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ─── Item request mutations ────────────────────────────────────────────────
 
-  async function createItemRequest(description: string, category?: string, size?: string) {
+  async function createItemRequest(description: string, category?: string, size?: string, referenceUrl?: string, photoUrl?: string) {
     if (!currentUser) return;
     const { data } = await supabase
       .from('item_requests')
-      .insert({ requester_id: currentUser.id, description, category: category || null, size: size || null })
+      .insert({
+        requester_id: currentUser.id,
+        description,
+        category: category || null,
+        size: size || null,
+        reference_url: referenceUrl || null,
+        photo_url: photoUrl || null,
+      })
       .select('*, requester:profiles!requester_id(*)')
       .single();
     if (data) setItemRequests(prev => [data as ItemRequest, ...prev]);

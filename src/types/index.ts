@@ -63,6 +63,8 @@ export interface ItemRequest {
   description: string;
   category?: string;
   size?: string;
+  reference_url?: string;
+  photo_url?: string;
   status: 'open' | 'fulfilled' | 'closed';
   created_at: string;
   // joined

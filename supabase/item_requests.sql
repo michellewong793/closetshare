@@ -4,13 +4,15 @@
 -- ── Tables ───────────────────────────────────────────────────────────────────
 
 create table public.item_requests (
-  id           uuid primary key default gen_random_uuid(),
-  requester_id uuid not null references public.profiles(id) on delete cascade,
-  description  text not null,
-  category     text check (category in ('tops','bottoms','dresses','outerwear','shoes','accessories')),
-  size         text,
-  status       text default 'open' check (status in ('open','fulfilled','closed')),
-  created_at   timestamptz default now()
+  id            uuid primary key default gen_random_uuid(),
+  requester_id  uuid not null references public.profiles(id) on delete cascade,
+  description   text not null,
+  category      text check (category in ('tops','bottoms','dresses','outerwear','shoes','accessories')),
+  size          text,
+  reference_url text,
+  photo_url     text,
+  status        text default 'open' check (status in ('open','fulfilled','closed')),
+  created_at    timestamptz default now()
 );
 
 -- Tracks which users have seen each item request (drives the unread badge)

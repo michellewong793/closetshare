@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { useApp } from '@/context/AppContext';
 import { ClothingRequest, ItemRequest } from '@/types';
-import { CheckCircle2, XCircle, RotateCcw, Clock, Plus, X } from 'lucide-react';
+import { CheckCircle2, XCircle, RotateCcw, Clock, Plus, X, Link as LinkIcon, ImageIcon } from 'lucide-react';
+import CameraCapture from '@/components/CameraCapture';
 import clsx from 'clsx';
 
 type Tab = 'incoming' | 'outgoing' | 'looking-for';
@@ -80,34 +82,52 @@ function ItemRequestCard({ req, isOwn, onClose }: {
 }) {
   const avatarColor = req.requester?.avatar_color ?? 'bg-gray-400';
   return (
-    <div className="card p-4">
-      <div className="flex items-start gap-3">
-        <div className={clsx('w-10 h-10 rounded-full flex items-center justify-center text-gray-900 font-bold flex-shrink-0', avatarColor)}>
-          {req.requester?.full_name?.charAt(0) ?? '?'}
+    <div className="card overflow-hidden">
+      {req.photo_url && (
+        <div className="relative w-full aspect-video bg-gray-100">
+          <Image src={req.photo_url} alt="Reference photo" fill className="object-cover" sizes="100vw" />
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2">
-            <p className="font-semibold text-gray-900 text-sm">
-              {isOwn ? 'You' : req.requester?.full_name} {isOwn ? 'are' : 'is'} looking for
+      )}
+      <div className="p-4">
+        <div className="flex items-start gap-3">
+          <div className={clsx('w-10 h-10 rounded-full flex items-center justify-center text-gray-900 font-bold flex-shrink-0', avatarColor)}>
+            {req.requester?.full_name?.charAt(0) ?? '?'}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <p className="font-semibold text-gray-900 text-sm">
+                {isOwn ? 'You' : req.requester?.full_name} {isOwn ? 'are' : 'is'} looking for
+              </p>
+              {isOwn && (
+                <button onClick={onClose} className="text-gray-400 hover:text-gray-600 flex-shrink-0">
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+            <p className="text-gray-800 text-sm mt-0.5">"{req.description}"</p>
+            <div className="flex gap-2 mt-1.5 flex-wrap">
+              {req.category && (
+                <span className="tag bg-gray-100 text-gray-600 capitalize">{req.category}</span>
+              )}
+              {req.size && (
+                <span className="tag bg-gray-100 text-gray-600">Size {req.size}</span>
+              )}
+            </div>
+            {req.reference_url && (
+              <a
+                href={req.reference_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-2 flex items-center gap-1.5 text-xs text-brand-700 font-medium hover:underline truncate"
+              >
+                <LinkIcon size={12} className="flex-shrink-0" />
+                <span className="truncate">{req.reference_url.replace(/^https?:\/\//, '')}</span>
+              </a>
+            )}
+            <p className="text-xs text-gray-400 mt-1.5">
+              {new Date(req.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
             </p>
-            {isOwn && (
-              <button onClick={onClose} className="text-gray-400 hover:text-gray-600 flex-shrink-0">
-                <X size={16} />
-              </button>
-            )}
           </div>
-          <p className="text-gray-800 text-sm mt-0.5">"{req.description}"</p>
-          <div className="flex gap-2 mt-1.5 flex-wrap">
-            {req.category && (
-              <span className="tag bg-gray-100 text-gray-600 capitalize">{req.category}</span>
-            )}
-            {req.size && (
-              <span className="tag bg-gray-100 text-gray-600">Size {req.size}</span>
-            )}
-          </div>
-          <p className="text-xs text-gray-400 mt-1.5">
-            {new Date(req.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-          </p>
         </div>
       </div>
     </div>
@@ -123,6 +143,9 @@ export default function RequestsPage() {
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [size, setSize] = useState('');
+  const [referenceUrl, setReferenceUrl] = useState('');
+  const [photoUrl, setPhotoUrl] = useState('');
+  const [showPhotoUpload, setShowPhotoUpload] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Mark requests as read when this tab is active
@@ -163,11 +186,20 @@ export default function RequestsPage() {
     e.preventDefault();
     if (!description.trim()) return;
     setSubmitting(true);
-    await createItemRequest(description.trim(), category || undefined, size.trim() || undefined);
+    await createItemRequest(
+      description.trim(),
+      category || undefined,
+      size.trim() || undefined,
+      referenceUrl.trim() || undefined,
+      photoUrl || undefined,
+    );
     setSubmitting(false);
     setDescription('');
     setCategory('');
     setSize('');
+    setReferenceUrl('');
+    setPhotoUrl('');
+    setShowPhotoUpload(false);
     setShowForm(false);
   }
 
@@ -246,7 +278,7 @@ export default function RequestsPage() {
             <form onSubmit={handleSubmitItemRequest} className="card p-4 mb-4 border-brand-200 bg-brand-50/50">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold text-gray-900 text-sm">What are you looking for?</h3>
-                <button type="button" onClick={() => setShowForm(false)} className="text-gray-400"><X size={16} /></button>
+                <button type="button" onClick={() => { setShowForm(false); setShowPhotoUpload(false); }} className="text-gray-400"><X size={16} /></button>
               </div>
               <div className="flex flex-col gap-3">
                 <textarea
@@ -276,6 +308,42 @@ export default function RequestsPage() {
                     onChange={e => setSize(e.target.value)}
                   />
                 </div>
+
+                {/* Reference link */}
+                <div className="relative">
+                  <LinkIcon size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="url"
+                    className="input-field pl-9 text-sm"
+                    placeholder="Reference link (optional)"
+                    value={referenceUrl}
+                    onChange={e => setReferenceUrl(e.target.value)}
+                  />
+                </div>
+
+                {/* Photo toggle */}
+                <button
+                  type="button"
+                  onClick={() => setShowPhotoUpload(v => !v)}
+                  className={clsx(
+                    'flex items-center gap-2 text-sm font-medium px-3 py-2.5 rounded-2xl border transition-colors',
+                    showPhotoUpload || photoUrl
+                      ? 'border-brand-400 text-brand-700 bg-brand-50'
+                      : 'border-gray-200 text-gray-600 bg-white'
+                  )}
+                >
+                  <ImageIcon size={15} />
+                  {photoUrl ? 'Photo added ✓' : 'Add reference photo'}
+                </button>
+
+                {showPhotoUpload && (
+                  <CameraCapture
+                    userId={currentUser!.id}
+                    existingUrl={photoUrl}
+                    onCapture={url => { setPhotoUrl(url); setShowPhotoUpload(false); }}
+                  />
+                )}
+
                 <button type="submit" className="btn-primary text-sm" disabled={submitting || !description.trim()}>
                   {submitting ? 'Posting…' : 'Post request'}
                 </button>
