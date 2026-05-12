@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { AppUser, Profile, ClothingItem, ClothingRequest, FriendWithItems, ClosetMember } from '@/types';
+import { AppUser, Profile, ClothingItem, ClothingRequest, FriendWithItems, ClosetMember, ItemRequest } from '@/types';
 
 interface AppContextType {
   currentUser: AppUser | null;
@@ -27,6 +27,12 @@ interface AppContextType {
   declineInvite: (inviteId: string) => Promise<void>;
   refreshFriends: () => Promise<void>;
 
+  itemRequests: ItemRequest[];
+  unreadItemRequestCount: number;
+  createItemRequest: (description: string, category?: string, size?: string) => Promise<void>;
+  closeItemRequest: (id: string) => Promise<void>;
+  markItemRequestsRead: () => Promise<void>;
+
   updateProfile: (updates: { full_name?: string; phone_number?: string }) => Promise<string | null>;
   signOut: () => Promise<void>;
 }
@@ -42,6 +48,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [requests, setRequests] = useState<ClothingRequest[]>([]);
   const [friends, setFriends] = useState<FriendWithItems[]>([]);
   const [pendingInvites, setPendingInvites] = useState<ClosetMember[]>([]);
+  const [itemRequests, setItemRequests] = useState<ItemRequest[]>([]);
+  const [unreadItemRequestCount, setUnreadItemRequestCount] = useState(0);
 
   // ─── Data loaders ──────────────────────────────────────────────────────────
 
@@ -123,13 +131,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setFriends(friendProfiles);
   }, [supabase]);
 
+  const loadItemRequests = useCallback(async (userId: string) => {
+    const [{ data: reqs }, { data: reads }] = await Promise.all([
+      supabase
+        .from('item_requests')
+        .select('*, requester:profiles!requester_id(*)')
+        .eq('status', 'open')
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('item_request_reads')
+        .select('item_request_id')
+        .eq('user_id', userId),
+    ]);
+    const readIds = new Set((reads ?? []).map((r: { item_request_id: string }) => r.item_request_id));
+    const list = (reqs as ItemRequest[]) ?? [];
+    setItemRequests(list);
+    setUnreadItemRequestCount(list.filter(r => r.requester_id !== userId && !readIds.has(r.id)).length);
+  }, [supabase]);
+
   const loadAllData = useCallback(async (userId: string) => {
     await Promise.all([
       loadMyItems(userId),
       loadRequests(userId),
       loadFriendsAndInvites(userId),
+      loadItemRequests(userId),
     ]);
-  }, [loadMyItems, loadRequests, loadFriendsAndInvites]);
+  }, [loadMyItems, loadRequests, loadFriendsAndInvites, loadItemRequests]);
 
   // ─── Auth init ────────────────────────────────────────────────────────────
 
@@ -289,6 +316,34 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     if (currentUser) await loadFriendsAndInvites(currentUser.id);
   }
 
+  // ─── Item request mutations ────────────────────────────────────────────────
+
+  async function createItemRequest(description: string, category?: string, size?: string) {
+    if (!currentUser) return;
+    const { data } = await supabase
+      .from('item_requests')
+      .insert({ requester_id: currentUser.id, description, category: category || null, size: size || null })
+      .select('*, requester:profiles!requester_id(*)')
+      .single();
+    if (data) setItemRequests(prev => [data as ItemRequest, ...prev]);
+  }
+
+  async function closeItemRequest(id: string) {
+    await supabase.from('item_requests').update({ status: 'closed' }).eq('id', id);
+    setItemRequests(prev => prev.filter(r => r.id !== id));
+  }
+
+  async function markItemRequestsRead() {
+    if (!currentUser || itemRequests.length === 0) return;
+    const toMark = itemRequests.filter(r => r.requester_id !== currentUser.id);
+    if (toMark.length === 0) return;
+    await supabase.from('item_request_reads').upsert(
+      toMark.map(r => ({ item_request_id: r.id, user_id: currentUser.id })),
+      { onConflict: 'item_request_id,user_id', ignoreDuplicates: true }
+    );
+    setUnreadItemRequestCount(0);
+  }
+
   // ─── Profile mutations ─────────────────────────────────────────────────────
 
   async function updateProfile(updates: { full_name?: string; phone_number?: string }): Promise<string | null> {
@@ -316,6 +371,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setRequests([]);
     setFriends([]);
     setPendingInvites([]);
+    setItemRequests([]);
+    setUnreadItemRequestCount(0);
   }
 
   return (
@@ -325,6 +382,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       myItems, addItem, updateItem, deleteItem,
       requests, createRequest, updateRequestStatus, refreshRequests,
       friends, pendingInvites, sendInvite, acceptInvite, declineInvite, refreshFriends,
+      itemRequests, unreadItemRequestCount, createItemRequest, closeItemRequest, markItemRequestsRead,
       updateProfile, signOut,
     }}>
       {children}
