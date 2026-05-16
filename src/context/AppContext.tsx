@@ -54,16 +54,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // ─── Data loaders ──────────────────────────────────────────────────────────
 
   const loadMyItems = useCallback(async (userId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('clothing_items')
       .select('*')
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
+    if (error) console.error('[loadMyItems] failed:', error.message, error.code);
     setMyItems((data as ClothingItem[]) ?? []);
   }, [supabase]);
 
   const loadRequests = useCallback(async (userId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('clothing_requests')
       .select(`
         *,
@@ -73,6 +74,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       `)
       .or(`requester_id.eq.${userId},owner_id.eq.${userId}`)
       .order('created_at', { ascending: false });
+    if (error) console.error('[loadRequests] failed:', error.message, error.code);
     setRequests((data as ClothingRequest[]) ?? []);
   }, [supabase]);
 
@@ -110,16 +112,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const friendProfiles: FriendWithItems[] = await Promise.all(
       accepted.map(async m => {
         const friendId = m.owner_id === userId ? m.member_id : m.owner_id;
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', friendId)
           .single();
-        const { data: items } = await supabase
+        if (profileError) console.error('[loadFriendsAndInvites] profile fetch failed:', profileError.message, profileError.code);
+        const { data: items, error: itemsError } = await supabase
           .from('clothing_items')
           .select('*')
           .eq('user_id', friendId)
           .order('created_at', { ascending: false });
+        if (itemsError) console.error('[loadFriendsAndInvites] items fetch failed:', itemsError.message, itemsError.code);
         return {
           id: friendId,
           profile: profile as Profile,
@@ -132,7 +136,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [supabase]);
 
   const loadItemRequests = useCallback(async (userId: string) => {
-    const [{ data: reqs }, { data: reads }] = await Promise.all([
+    const [{ data: reqs, error: reqsError }, { data: reads, error: readsError }] = await Promise.all([
       supabase
         .from('item_requests')
         .select('*, requester:profiles!requester_id(*)')
@@ -143,6 +147,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         .select('item_request_id')
         .eq('user_id', userId),
     ]);
+    if (reqsError) console.error('[loadItemRequests] reqs failed:', reqsError.message, reqsError.code);
+    if (readsError) console.error('[loadItemRequests] reads failed:', readsError.message, readsError.code);
     const readIds = new Set((reads ?? []).map((r: { item_request_id: string }) => r.item_request_id));
     const list = (reqs as ItemRequest[]) ?? [];
     setItemRequests(list);
