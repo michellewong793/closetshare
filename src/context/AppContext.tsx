@@ -33,7 +33,8 @@ interface AppContextType {
   closeItemRequest: (id: string) => Promise<void>;
   markItemRequestsRead: () => Promise<void>;
 
-  updateProfile: (updates: { full_name?: string; phone_number?: string }) => Promise<string | null>;
+  updateProfile: (updates: { full_name?: string; phone_number?: string; username?: string }) => Promise<string | null>;
+  checkUsernameAvailable: (username: string) => Promise<boolean>;
   signOut: () => Promise<void>;
 }
 
@@ -361,7 +362,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   // ─── Profile mutations ─────────────────────────────────────────────────────
 
-  async function updateProfile(updates: { full_name?: string; phone_number?: string }): Promise<string | null> {
+  async function checkUsernameAvailable(username: string): Promise<boolean> {
+    if (!currentUser) return false;
+    const { data } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('username', username)
+      .neq('id', currentUser.id)
+      .maybeSingle();
+    return data === null;
+  }
+
+  async function updateProfile(updates: { full_name?: string; phone_number?: string; username?: string }): Promise<string | null> {
     if (!currentUser) return 'Not logged in';
     const { data, error } = await supabase
       .from('profiles')
@@ -398,7 +410,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       requests, createRequest, updateRequestStatus, refreshRequests,
       friends, pendingInvites, sendInvite, acceptInvite, declineInvite, refreshFriends,
       itemRequests, unreadItemRequestCount, createItemRequest, closeItemRequest, markItemRequestsRead,
-      updateProfile, signOut,
+      updateProfile, checkUsernameAvailable, signOut,
     }}>
       {children}
     </AppContext.Provider>

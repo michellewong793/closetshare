@@ -1,56 +1,168 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, Save, Shirt } from 'lucide-react';
+import { LogOut, Save, Shirt, Check, X, Loader2, Copy, AtSign } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import clsx from 'clsx';
 
+const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
+
+type UsernameStatus = 'idle' | 'checking' | 'available' | 'taken' | 'invalid';
+
 export default function ProfilePage() {
-  const { currentUser, updateProfile, signOut } = useApp();
+  const { currentUser, updateProfile, checkUsernameAvailable, signOut } = useApp();
   const router = useRouter();
+
+  // Profile fields
   const [fullName, setFullName] = useState(currentUser?.profile.full_name ?? '');
   const [phone, setPhone] = useState(currentUser?.profile.phone_number ?? '');
-  const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState('');
 
-  async function handleSave(e: React.FormEvent) {
+  // Username editing
+  const [usernameInput, setUsernameInput] = useState(currentUser?.profile.username ?? '');
+  const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>('idle');
+  const [usernameSaving, setUsernameSaving] = useState(false);
+  const [usernameSaved, setUsernameSaved] = useState(false);
+  const [usernameError, setUsernameError] = useState('');
+  const [copiedUsername, setCopiedUsername] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const currentUsername = currentUser?.profile.username ?? '';
+  const usernameChanged = usernameInput !== currentUsername;
+
+  useEffect(() => {
+    if (!usernameChanged) { setUsernameStatus('idle'); return; }
+
+    if (!USERNAME_RE.test(usernameInput)) {
+      setUsernameStatus('invalid');
+      return;
+    }
+
+    setUsernameStatus('checking');
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      const available = await checkUsernameAvailable(usernameInput);
+      setUsernameStatus(available ? 'available' : 'taken');
+    }, 400);
+
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [usernameInput, usernameChanged, checkUsernameAvailable]);
+
+  async function handleSaveUsername() {
+    if (usernameStatus !== 'available' || !usernameChanged) return;
+    setUsernameError('');
+    setUsernameSaving(true);
+    const err = await updateProfile({ username: usernameInput });
+    setUsernameSaving(false);
+    if (err) {
+      setUsernameError(err);
+    } else {
+      setUsernameSaved(true);
+      setUsernameStatus('idle');
+      setTimeout(() => setUsernameSaved(false), 2000);
+    }
+  }
+
+  async function handleSaveProfile(e: React.FormEvent) {
     e.preventDefault();
-    if (!currentUser) return;
     setSaving(true);
     setSaveError('');
     const err = await updateProfile({ full_name: fullName, phone_number: phone });
     setSaving(false);
-    if (err) {
-      setSaveError(err);
-    } else {
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    }
+    if (err) { setSaveError(err); }
+    else { setSaved(true); setTimeout(() => setSaved(false), 2000); }
   }
 
-  async function handleLogout() {
-    await signOut();
-    router.push('/login');
+  function copyUsername() {
+    navigator.clipboard.writeText(`@${currentUsername}`);
+    setCopiedUsername(true);
+    setTimeout(() => setCopiedUsername(false), 2000);
   }
 
   if (!currentUser) return null;
 
   return (
-    <div className="px-4 pt-4">
+    <div className="px-4 pt-4 pb-8">
       <h2 className="text-2xl font-bold text-gray-900 mb-6">Profile</h2>
 
+      {/* Avatar */}
       <div className="flex flex-col items-center mb-8">
         <div className={clsx('w-20 h-20 rounded-full flex items-center justify-center text-gray-900 text-3xl font-bold mb-3', currentUser.profile.avatar_color)}>
           {currentUser.profile.full_name.charAt(0)}
         </div>
         <p className="font-semibold text-gray-900">{currentUser.profile.full_name}</p>
-        <p className="text-sm text-gray-500">{currentUser.email}</p>
-        <p className="text-xs text-gray-400 mt-0.5">@{currentUser.profile.username}</p>
+        <p className="text-sm text-gray-500 mt-0.5">{currentUser.email}</p>
       </div>
 
-      <form onSubmit={handleSave} className="flex flex-col gap-4">
+      {/* Username card */}
+      <div className="card p-4 mb-5">
+        <div className="flex items-center gap-2 mb-1">
+          <AtSign size={15} className="text-brand-700" />
+          <h3 className="font-semibold text-gray-900 text-sm">Your username</h3>
+        </div>
+        <p className="text-xs text-gray-500 mb-3">Friends use this to find and invite you.</p>
+
+        {/* Current username + copy */}
+        <div className="flex items-center gap-2 mb-3 p-2.5 bg-gray-50 rounded-xl">
+          <span className="flex-1 text-sm font-mono font-medium text-gray-800">@{currentUsername}</span>
+          <button
+            onClick={copyUsername}
+            className="flex items-center gap-1 text-xs text-brand-700 font-semibold"
+          >
+            {copiedUsername ? <Check size={13} /> : <Copy size={13} />}
+            {copiedUsername ? 'Copied!' : 'Copy'}
+          </button>
+        </div>
+
+        {/* Edit username */}
+        <div className="relative">
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">@</span>
+          <input
+            type="text"
+            className={clsx(
+              'input-field pl-7 pr-9 text-sm font-mono',
+              usernameStatus === 'available' && 'border-green-400 focus:border-green-500',
+              (usernameStatus === 'taken' || usernameStatus === 'invalid') && 'border-orange-400 focus:border-orange-500',
+            )}
+            value={usernameInput}
+            onChange={e => setUsernameInput(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+            placeholder={currentUsername}
+            maxLength={20}
+          />
+          <div className="absolute right-3 top-1/2 -translate-y-1/2">
+            {usernameStatus === 'checking' && <Loader2 size={15} className="text-gray-400 animate-spin" />}
+            {usernameStatus === 'available' && <Check size={15} className="text-green-500" />}
+            {(usernameStatus === 'taken' || usernameStatus === 'invalid') && <X size={15} className="text-orange-500" />}
+          </div>
+        </div>
+
+        {usernameStatus === 'invalid' && (
+          <p className="text-xs text-orange-600 mt-1.5">3–20 characters, letters, numbers, and underscores only.</p>
+        )}
+        {usernameStatus === 'taken' && (
+          <p className="text-xs text-orange-600 mt-1.5">That username is already taken.</p>
+        )}
+        {usernameStatus === 'available' && (
+          <p className="text-xs text-green-600 mt-1.5">@{usernameInput} is available!</p>
+        )}
+        {usernameError && <p className="text-xs text-orange-600 mt-1.5">{usernameError}</p>}
+
+        {usernameChanged && usernameStatus === 'available' && (
+          <button
+            onClick={handleSaveUsername}
+            disabled={usernameSaving}
+            className="mt-3 w-full btn-primary text-sm"
+          >
+            {usernameSaving ? 'Saving…' : usernameSaved ? 'Saved!' : 'Save username'}
+          </button>
+        )}
+      </div>
+
+      {/* Profile fields */}
+      <form onSubmit={handleSaveProfile} className="flex flex-col gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Full name</label>
           <input type="text" className="input-field" value={fullName} onChange={e => setFullName(e.target.value)} />
@@ -70,7 +182,7 @@ export default function ProfilePage() {
 
       <div className="mt-6 pt-6 border-t border-gray-100">
         <button
-          onClick={handleLogout}
+          onClick={async () => { await signOut(); router.push('/login'); }}
           className="flex items-center gap-2 text-orange-600 hover:text-orange-700 font-medium text-sm"
         >
           <LogOut size={16} /> Sign out
@@ -79,7 +191,7 @@ export default function ProfilePage() {
 
       <div className="mt-8 flex items-center gap-2 text-gray-400 text-xs">
         <Shirt size={14} />
-        <span>ClosetShare v0.1 · Built with Next.js + Supabase + Twilio</span>
+        <span>ClosetShare · Built with Next.js + Supabase</span>
       </div>
     </div>
   );

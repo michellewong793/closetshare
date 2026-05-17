@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { UserPlus, CheckCircle2, Copy, Users, RefreshCw } from 'lucide-react';
+import { UserPlus, CheckCircle2, Copy, Users, RefreshCw, AtSign } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import clsx from 'clsx';
 
@@ -17,6 +17,7 @@ export default function InvitePage() {
   const [inviteError, setInviteError] = useState('');
   const [justInvited, setJustInvited] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copiedUsername, setCopiedUsername] = useState(false);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -69,7 +70,29 @@ export default function InvitePage() {
           <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
         </button>
       </div>
-      <p className="text-gray-500 text-sm mb-6">Connect with friends to share closets</p>
+      <p className="text-gray-500 text-sm mb-4">Connect with friends to share closets</p>
+
+      {/* Your username — share this so friends can find you */}
+      <div className="card p-3 mb-5 flex items-center gap-3">
+        <div className="w-9 h-9 rounded-xl bg-brand-100 flex items-center justify-center flex-shrink-0">
+          <AtSign size={16} className="text-brand-700" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs text-gray-500">Your username</p>
+          <p className="font-mono font-semibold text-gray-900">@{currentUser?.profile.username}</p>
+        </div>
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(`@${currentUser?.profile.username}`);
+            setCopiedUsername(true);
+            setTimeout(() => setCopiedUsername(false), 2000);
+          }}
+          className="flex items-center gap-1.5 text-xs font-semibold text-brand-700 flex-shrink-0"
+        >
+          {copiedUsername ? <CheckCircle2 size={14} /> : <Copy size={14} />}
+          {copiedUsername ? 'Copied!' : 'Copy'}
+        </button>
+      </div>
 
       {/* Incoming invites to accept */}
       {incomingInvites.length > 0 && (
