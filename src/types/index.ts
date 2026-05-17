@@ -4,6 +4,7 @@ export interface Profile {
   full_name: string;
   phone_number: string;
   avatar_color: string;
+  avatar_url?: string;
   created_at: string;
 }
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useApp } from '@/context/AppContext';
+import Avatar from '@/components/Avatar';
 import { ClothingRequest, ItemRequest } from '@/types';
 import { CheckCircle2, XCircle, RotateCcw, Clock, Plus, X, Link as LinkIcon, ImageIcon } from 'lucide-react';
 import CameraCapture from '@/components/CameraCapture';
@@ -29,14 +30,13 @@ function RequestCard({ req, isIncoming, onApprove, onDecline, onReturn }: {
   const status = STATUS_CONFIG[req.status];
   const StatusIcon = status.icon;
   const person = isIncoming ? req.requester : req.owner;
-  const avatarColor = person?.avatar_color ?? 'bg-gray-400';
-
   return (
     <div className="card p-4">
       <div className="flex items-start gap-3">
-        <div className={clsx('w-10 h-10 rounded-full flex items-center justify-center text-gray-900 font-bold flex-shrink-0', avatarColor)}>
-          {person?.full_name?.charAt(0) ?? '?'}
-        </div>
+        <Avatar
+          profile={{ full_name: person?.full_name ?? '?', avatar_color: person?.avatar_color ?? 'bg-gray-400', avatar_url: person?.avatar_url }}
+          className="w-10 h-10"
+        />
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <p className="font-semibold text-gray-900 text-sm">
@@ -80,7 +80,6 @@ function ItemRequestCard({ req, isOwn, onClose }: {
   isOwn: boolean;
   onClose: () => void;
 }) {
-  const avatarColor = req.requester?.avatar_color ?? 'bg-gray-400';
   return (
     <div className="card overflow-hidden">
       {req.photo_url && (
@@ -90,9 +89,10 @@ function ItemRequestCard({ req, isOwn, onClose }: {
       )}
       <div className="p-4">
         <div className="flex items-start gap-3">
-          <div className={clsx('w-10 h-10 rounded-full flex items-center justify-center text-gray-900 font-bold flex-shrink-0', avatarColor)}>
-            {req.requester?.full_name?.charAt(0) ?? '?'}
-          </div>
+          <Avatar
+            profile={{ full_name: req.requester?.full_name ?? '?', avatar_color: req.requester?.avatar_color ?? 'bg-gray-400', avatar_url: req.requester?.avatar_url }}
+            className="w-10 h-10"
+          />
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
               <p className="font-semibold text-gray-900 text-sm">

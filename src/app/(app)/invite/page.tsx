@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { UserPlus, CheckCircle2, Copy, Users, RefreshCw, AtSign } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import Avatar from '@/components/Avatar';
 import clsx from 'clsx';
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -101,9 +102,10 @@ export default function InvitePage() {
           <div className="flex flex-col gap-2">
             {incomingInvites.map(invite => (
               <div key={invite.id} className="card flex items-center gap-3 p-3">
-                <div className={clsx('w-10 h-10 rounded-full flex items-center justify-center text-gray-900 font-bold flex-shrink-0', invite.profile?.avatar_color ?? 'bg-gray-200')}>
-                  {invite.profile?.full_name?.charAt(0) ?? '?'}
-                </div>
+                <Avatar
+                  profile={{ full_name: invite.profile?.full_name ?? '?', avatar_color: invite.profile?.avatar_color ?? 'bg-gray-200', avatar_url: invite.profile?.avatar_url }}
+                  className="w-10 h-10"
+                />
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-gray-900">{invite.profile?.full_name}</p>
                   <p className="text-xs text-gray-500">@{invite.profile?.username}</p>
@@ -184,9 +186,11 @@ export default function InvitePage() {
             {outgoingInvites.map(invite => (
               <div key={invite.id} className="flex items-center justify-between card px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <div className={clsx('w-8 h-8 rounded-full flex items-center justify-center text-gray-900 text-sm font-bold', invite.profile?.avatar_color ?? 'bg-gray-200')}>
-                    {invite.profile?.full_name?.charAt(0) ?? '?'}
-                  </div>
+                  <Avatar
+                    profile={{ full_name: invite.profile?.full_name ?? '?', avatar_color: invite.profile?.avatar_color ?? 'bg-gray-200', avatar_url: invite.profile?.avatar_url }}
+                    className="w-8 h-8"
+                    textClassName="text-sm"
+                  />
                   <span className="text-sm text-gray-700">@{invite.profile?.username}</span>
                 </div>
                 <span className="tag bg-amber-100 text-amber-700">Pending</span>
@@ -208,9 +212,7 @@ export default function InvitePage() {
           <div className="flex flex-col gap-3">
             {friends.map(f => (
               <div key={f.id} className="card flex items-center gap-3 p-3">
-                <div className={clsx('w-11 h-11 rounded-full flex items-center justify-center text-gray-900 font-bold text-lg flex-shrink-0', f.profile.avatar_color)}>
-                  {f.profile.full_name.charAt(0)}
-                </div>
+                <Avatar profile={f.profile} className="w-11 h-11" textClassName="text-lg font-bold" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="font-semibold text-gray-900">{f.profile.full_name}</p>
