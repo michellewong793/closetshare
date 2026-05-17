@@ -33,7 +33,7 @@ interface AppContextType {
   closeItemRequest: (id: string) => Promise<void>;
   markItemRequestsRead: () => Promise<void>;
 
-  updateProfile: (updates: { full_name?: string; phone_number?: string; username?: string }) => Promise<string | null>;
+  updateProfile: (updates: { full_name?: string; phone_number?: string; username?: string; avatar_url?: string }) => Promise<string | null>;
   checkUsernameAvailable: (username: string) => Promise<boolean>;
   signOut: () => Promise<void>;
 }

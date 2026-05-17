@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, Save, Shirt, Check, X, Loader2, Copy, AtSign } from 'lucide-react';
+import { LogOut, Save, Shirt, Check, X, Loader2, Copy, AtSign, Camera } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import { createClient } from '@/lib/supabase/client';
+import Avatar from '@/components/Avatar';
 import clsx from 'clsx';
 
 const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
@@ -20,6 +22,30 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState('');
+
+  // Avatar upload
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState('');
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !currentUser) return;
+    e.target.value = '';
+    setAvatarUploading(true);
+    setAvatarError('');
+    const supabase = createClient();
+    const ext = file.type === 'image/png' ? 'png' : 'jpg';
+    const path = `${currentUser.id}/avatar-${Date.now()}.${ext}`;
+    const { data, error: uploadError } = await supabase.storage
+      .from('item-photos')
+      .upload(path, file, { contentType: file.type, upsert: false });
+    if (uploadError) { setAvatarError(uploadError.message); setAvatarUploading(false); return; }
+    const { data: { publicUrl } } = supabase.storage.from('item-photos').getPublicUrl(data.path);
+    const err = await updateProfile({ avatar_url: publicUrl });
+    if (err) setAvatarError(err);
+    setAvatarUploading(false);
+  }
 
   // Username editing
   const [usernameInput, setUsernameInput] = useState(currentUser?.profile.username ?? '');
@@ -90,11 +116,24 @@ export default function ProfilePage() {
 
       {/* Avatar */}
       <div className="flex flex-col items-center mb-8">
-        <div className={clsx('w-20 h-20 rounded-full flex items-center justify-center text-gray-900 text-3xl font-bold mb-3', currentUser.profile.avatar_color)}>
-          {currentUser.profile.full_name.charAt(0)}
-        </div>
+        <button
+          type="button"
+          onClick={() => avatarInputRef.current?.click()}
+          disabled={avatarUploading}
+          className="relative mb-3 group"
+        >
+          <Avatar profile={currentUser.profile} className="w-20 h-20" textClassName="text-3xl" />
+          <div className="absolute inset-0 rounded-full bg-black/30 flex items-center justify-center opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity">
+            {avatarUploading
+              ? <Loader2 size={22} className="text-white animate-spin" />
+              : <Camera size={22} className="text-white" />}
+          </div>
+        </button>
+        <input ref={avatarInputRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} />
+        {avatarError && <p className="text-xs text-orange-600 mb-1">{avatarError}</p>}
         <p className="font-semibold text-gray-900">{currentUser.profile.full_name}</p>
         <p className="text-sm text-gray-500 mt-0.5">{currentUser.email}</p>
+        <p className="text-xs text-gray-400 mt-0.5">Tap photo to change</p>
       </div>
 
       {/* Username card */}

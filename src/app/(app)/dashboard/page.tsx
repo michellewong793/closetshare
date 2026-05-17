@@ -6,6 +6,7 @@ import { Search, Star } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { ClothingItem, FriendWithItems } from '@/types';
 import RequestModal from '@/components/RequestModal';
+import Avatar from '@/components/Avatar';
 import clsx from 'clsx';
 
 const CATEGORIES = ['All', 'Outerwear', 'Dresses', 'Tops', 'Bottoms', 'Shoes', 'Accessories'];
@@ -65,9 +66,7 @@ export default function DashboardPage() {
         <div className="flex gap-3 overflow-x-auto pb-2 mb-5 -mx-4 px-4">
           {friends.map(f => (
             <div key={f.id} className="flex-shrink-0 flex flex-col items-center gap-1">
-              <div className={clsx('w-12 h-12 rounded-full flex items-center justify-center text-gray-900 font-bold text-lg', f.profile.avatar_color)}>
-                {f.profile.full_name.charAt(0)}
-              </div>
+              <Avatar profile={f.profile} className="w-12 h-12" textClassName="text-lg font-bold" />
               <span className="text-xs text-gray-500 max-w-[50px] truncate">{f.profile.full_name.split(' ')[0]}</span>
             </div>
           ))}
@@ -108,9 +107,7 @@ export default function DashboardPage() {
               <div className="p-3">
                 <p className="font-semibold text-sm text-gray-900 truncate">{item.name}</p>
                 <div className="flex items-center gap-1.5 mt-1">
-                  <div className={clsx('w-4 h-4 rounded-full text-gray-900 text-[9px] font-bold flex items-center justify-center', owner.profile.avatar_color)}>
-                    {owner.profile.full_name.charAt(0)}
-                  </div>
+                  <Avatar profile={owner.profile} className="w-4 h-4" textClassName="text-[9px] font-bold" />
                   <span className="text-xs text-gray-500">{owner.profile.full_name.split(' ')[0]}</span>
                   <span className="text-xs text-gray-300">·</span>
                   <span className="text-xs text-gray-400">{item.size}</span>
