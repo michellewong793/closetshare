@@ -6,6 +6,7 @@ import { Plus, Pencil, Trash2, X, Check } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { ClothingItem } from '@/types';
 import CameraCapture from '@/components/CameraCapture';
+import PhotoLightbox from '@/components/PhotoLightbox';
 import clsx from 'clsx';
 
 const CATEGORIES: ClothingItem['category'][] = ['tops', 'bottoms', 'dresses', 'outerwear', 'shoes', 'accessories'];
@@ -25,6 +26,7 @@ export default function MyClosetPage() {
   const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
 
   async function saveItem() {
     if (!draft.name || !draft.size) return;
@@ -123,12 +125,17 @@ export default function MyClosetPage() {
         <div className="flex flex-col gap-3">
           {myItems.map(item => (
             <div key={item.id} className="card flex gap-3 p-3">
-              <div className="relative w-16 h-20 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => item.image_url && setLightboxUrl(item.image_url)}
+                className="relative w-16 h-20 rounded-xl overflow-hidden bg-gray-100 flex-shrink-0 active:opacity-80"
+                disabled={!item.image_url}
+              >
                 {item.image_url
                   ? <Image src={item.image_url} alt={item.name} fill className="object-cover" sizes="64px" />
                   : <div className="w-full h-full flex items-center justify-center text-2xl">{CATEGORY_EMOJI[item.category]}</div>
                 }
-              </div>
+              </button>
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -157,6 +164,7 @@ export default function MyClosetPage() {
           ))}
         </div>
       )}
+      {lightboxUrl && <PhotoLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
     </div>
   );
 }
