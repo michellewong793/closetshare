@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { X, CheckCircle2 } from 'lucide-react';
+import { X, CheckCircle2, ZoomIn } from 'lucide-react';
 import { ClothingItem, FriendWithItems } from '@/types';
 import { useApp } from '@/context/AppContext';
+import Avatar from '@/components/Avatar';
+import PhotoLightbox from '@/components/PhotoLightbox';
 import clsx from 'clsx';
 
 interface Props {
@@ -18,6 +20,7 @@ export default function RequestModal({ item, owner, onClose }: Props) {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [lightbox, setLightbox] = useState(false);
 
   async function handleRequest() {
     if (!currentUser) return;
@@ -40,6 +43,7 @@ export default function RequestModal({ item, owner, onClose }: Props) {
   }
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={e => e.target === e.currentTarget && onClose()}>
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-md bg-white rounded-t-3xl shadow-2xl z-10 pb-safe">
@@ -60,25 +64,36 @@ export default function RequestModal({ item, owner, onClose }: Props) {
             <button className="btn-primary mt-6 max-w-xs" onClick={onClose}>Done</button>
           </div>
         ) : (
-          <div className="px-5 pb-6">
-            <div className="flex gap-4 mb-5">
-              {item.image_url && (
-                <div className="relative w-20 h-24 rounded-2xl overflow-hidden flex-shrink-0 bg-gray-100">
-                  <Image src={item.image_url} alt={item.name} fill className="object-cover" sizes="80px" />
-                </div>
-              )}
-              <div className="flex-1 min-w-0">
-                <h3 className="font-bold text-gray-900 text-lg leading-tight">{item.name}</h3>
-                <p className="text-sm text-gray-500 mt-0.5">Size {item.size}</p>
-                <p className="text-sm text-gray-600 mt-1 line-clamp-2">{item.description}</p>
-                <div className="flex items-center gap-1.5 mt-2">
-                  <div className={clsx('w-5 h-5 rounded-full text-gray-900 text-[10px] font-bold flex items-center justify-center', owner.profile.avatar_color)}>
-                    {owner.profile.full_name.charAt(0)}
+          <div className="pb-6">
+            {/* Full-width photo */}
+            {item.image_url && (
+              <button
+                type="button"
+                onClick={() => setLightbox(true)}
+                className="relative w-full aspect-[4/3] bg-gray-100 overflow-hidden group block mb-4"
+              >
+                <Image src={item.image_url} alt={item.name} fill className="object-cover" sizes="100vw" />
+                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 group-active:bg-black/20 transition-colors flex items-center justify-center">
+                  <div className="opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity bg-black/50 rounded-full p-2">
+                    <ZoomIn size={20} className="text-white" />
                   </div>
-                  <span className="text-xs text-gray-500">{owner.profile.full_name}'s closet</span>
+                </div>
+              </button>
+            )}
+
+            <div className="px-5">
+              {/* Item details */}
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-bold text-gray-900 text-lg leading-tight">{item.name}</h3>
+                  <p className="text-sm text-gray-500 mt-0.5">Size {item.size}</p>
+                  {item.description && <p className="text-sm text-gray-600 mt-1">{item.description}</p>}
+                </div>
+                <div className="flex items-center gap-1.5 flex-shrink-0 mt-1">
+                  <Avatar profile={owner.profile} className="w-5 h-5" textClassName="text-[10px]" />
+                  <span className="text-xs text-gray-500">{owner.profile.full_name.split(' ')[0]}</span>
                 </div>
               </div>
-            </div>
 
             {!item.available && (
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-3 mb-4 text-sm text-amber-700">
@@ -100,12 +115,17 @@ export default function RequestModal({ item, owner, onClose }: Props) {
               />
             </div>
 
-            <button className="btn-primary" onClick={handleRequest} disabled={loading}>
-              {loading ? 'Sending request…' : `Request from ${owner.profile.full_name.split(' ')[0]}`}
-            </button>
+              <button className="btn-primary" onClick={handleRequest} disabled={loading}>
+                {loading ? 'Sending request…' : `Request from ${owner.profile.full_name.split(' ')[0]}`}
+              </button>
+            </div>
           </div>
         )}
       </div>
     </div>
+    {lightbox && item.image_url && (
+      <PhotoLightbox url={item.image_url} alt={item.name} onClose={() => setLightbox(false)} />
+    )}
+    </>
   );
 }
